@@ -97,3 +97,15 @@ jobs:
               assert before['checks'] == after['checks']
               assert after['metrics']['cache_loads'] < before['metrics']['cache_loads'] / 10
           PYCODE
+
+      - name: Qualify transaction staging and locked old-row reads
+        run: |
+          docker run --rm --network host --entrypoint php \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/revento,target=/qualification,readonly" \
+            -e REVENTO_DATABASE_AUTOLOAD=/usr/src/code/vendor/autoload.php \
+            -e REVENTO_DATABASE_SOURCE=/usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
+            -e REVENTO_TRANSACTION_SOURCE=/usr/src/code/src/Appwrite/Databases/TransactionState.php \
+            -e 'RELATION_PG_DSN=pgsql:host=127.0.0.1;port=5432;dbname=relation_probe' \
+            -e RELATION_PG_USER=relation_probe \
+            -e RELATION_PG_PASSWORD=synthetic-ci-only \
+            revento/appwrite:qualification /qualification/tests/eng2084-transaction-reads.php candidate

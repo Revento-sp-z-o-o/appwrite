@@ -1,0 +1,18 @@
+[
+  {
+    "before": "            $dbForDatabases = $getDatabasesDB($databaseDoc);",
+    "after": "            $dbForDatabases = $getDatabasesDB($databaseDoc);\n            $driver = $dbForDatabases->getAdapter()->getDriver();\n            $fetchOldRelationshipIdsOnly = \\in_array($this->getDatabaseType(), [LEGACY, TABLESDB], true)\n                && $driver instanceof \\Utopia\\Database\\PDO\n                && $driver->getAttribute(\\PDO::ATTR_DRIVER_NAME) === 'pgsql';"
+  },
+  {
+    "before": "$currentDocumentId, $collections) {",
+    "after": "$currentDocumentId, $collections, $fetchOldRelationshipIdsOnly) {"
+  },
+  {
+    "before": "$this->handleUpdateOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state);",
+    "after": "$this->handleUpdateOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state, $fetchOldRelationshipIdsOnly);"
+  },
+  {
+    "before": "    private function handleUpdateOperation(\n        Database $dbForProject,\n        string $collectionId,\n        string $documentId,\n        array $data,\n        \\DateTime $createdAt,\n        array &$state\n    ): void {\n        $dependent = isset($state[$collectionId][$documentId]);\n\n        if ($dependent) {\n            $state[$collectionId][$documentId] = $dbForProject->updateDocument(\n                $collectionId,\n                $documentId,\n                new Document($data),\n            );\n            return;\n        }\n\n        $dbForProject->withRequestTimestamp($createdAt, function () use ($dbForProject, $collectionId, $documentId, $data, &$state) {\n            $document = $dbForProject->updateDocument(\n                $collectionId,\n                $documentId,\n                new Document($data),\n            );\n            if ($document->isEmpty()) {\n                throw new NotFoundException('');\n            }\n            $state[$collectionId][$documentId] = $document;\n        });\n    }\n\n",
+    "after": "    private function handleUpdateOperation(\n        Database $dbForProject,\n        string $collectionId,\n        string $documentId,\n        array $data,\n        \\DateTime $createdAt,\n        array &$state,\n        bool $fetchOldRelationshipIdsOnly\n    ): void {\n        $dependent = isset($state[$collectionId][$documentId]);\n\n        if ($dependent) {\n            $state[$collectionId][$documentId] = $dbForProject->updateDocument(\n                $collectionId,\n                $documentId,\n                new Document($data),\n                fetchOldRelationshipIdsOnly: $fetchOldRelationshipIdsOnly,\n            );\n            return;\n        }\n\n        $dbForProject->withRequestTimestamp($createdAt, function () use ($dbForProject, $collectionId, $documentId, $data, &$state, $fetchOldRelationshipIdsOnly) {\n            $document = $dbForProject->updateDocument(\n                $collectionId,\n                $documentId,\n                new Document($data),\n                fetchOldRelationshipIdsOnly: $fetchOldRelationshipIdsOnly,\n            );\n            if ($document->isEmpty()) {\n                throw new NotFoundException('');\n            }\n            $state[$collectionId][$documentId] = $document;\n        });\n    }\n\n"
+  }
+]

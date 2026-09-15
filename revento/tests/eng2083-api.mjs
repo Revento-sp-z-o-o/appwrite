@@ -107,7 +107,11 @@ try {
     await call('POST', `${base}/tables/${id}/rows`, { rowId: 'shared', data: { label: `initial_${id}` } });
   }
   await call('POST', `${base}/tables/first/rows`, { rowId: 'deleted', data: { label: 'delete_snapshot' } });
-  const ws = new URL(config.endpoint.replace(/^http/, 'ws') + '/realtime');
+  const ws = new URL(config.realtimeEndpoint ?? config.endpoint.replace(/^http/, 'ws') + '/realtime');
+  assert.equal(ws.pathname, '/v1/realtime');
+  assert(!ws.username && !ws.password && !ws.search && !ws.hash);
+  if (!target) assert(['127.0.0.1', 'localhost'].includes(ws.hostname));
+  else assert.equal(ws.protocol, 'wss:');
   ws.searchParams.set('project', config.project);
   ws.searchParams.append('channels[]', `databases.${database}.tables.first.rows`);
   ws.searchParams.append('channels[]', `databases.${database}.tables.second.rows`);

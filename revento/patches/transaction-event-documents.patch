@@ -1,6 +1,6 @@
 --- a/src/Appwrite/Databases/TransactionState.php
 +++ b/src/Appwrite/Databases/TransactionState.php
-@@ -33,6 +33,76 @@
+@@ -33,6 +33,96 @@
          $this->getDatabasesDB = $getDatabasesDB;
      }
  
@@ -73,6 +73,26 @@
 +            }
 +        }
 +        return $documents;
++    }
++
++    /**
++     * Read the identity and permissions consumed by operation staging.
++     * Preserve transaction overlays and authorization through the ordinary read path.
++     */
++    public function getDocumentForOperation(
++        Document $database,
++        string $collectionId,
++        string $documentId,
++        string $transactionId
++    ): Document {
++        $dbForDatabases = ($this->getDatabasesDB)($database);
++        $driver = $dbForDatabases->getAdapter()->getDriver();
++        $queries = $driver instanceof \Utopia\Database\PDO
++            && $driver->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql'
++            ? [Query::select(['$id', '$permissions'])]
++            : [];
++
++        return $this->getDocument($database, $collectionId, $documentId, $transactionId, $queries);
 +    }
  
      /**
