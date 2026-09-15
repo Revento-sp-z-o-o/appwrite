@@ -1,0 +1,53 @@
+--- a/vendor/utopia-php/database/src/Database/Database.php
++++ b/vendor/utopia-php/database/src/Database/Database.php
+@@ -5295,7 +5295,6 @@
+     private function populateOneToOneRelationshipsBatch(array $documents, Document $relationship, array $queries): array
+     {
+         $key = $relationship['key'];
+-        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         $relatedIds = [];
+         $documentsByRelatedId = [];
+@@ -5320,6 +5319,8 @@
+         if (empty($relatedIds)) {
+             return [];
+         }
++
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         $uniqueRelatedIds = \array_unique($relatedIds);
+         $relatedDocuments = [];
+@@ -5377,7 +5378,6 @@
+         $twoWay = $relationship['options']['twoWay'];
+         $twoWayKey = $relationship['options']['twoWayKey'];
+         $side = $relationship['options']['side'];
+-        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         if ($side === Database::RELATION_SIDE_CHILD) {
+             // Child side - treat like one-to-one
+@@ -5402,6 +5402,8 @@
+         if (empty($parentIds)) {
+             return [];
+         }
++
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         // For batch relationship population, we need to fetch documents with all attributes
+         // to enable proper grouping by back-reference, then apply selects afterward
+@@ -5475,7 +5477,6 @@
+         $twoWay = $relationship['options']['twoWay'];
+         $twoWayKey = $relationship['options']['twoWayKey'];
+         $side = $relationship['options']['side'];
+-        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         if ($side === Database::RELATION_SIDE_PARENT) {
+             // Parent side - treat like one-to-one
+@@ -5501,6 +5502,8 @@
+         if (empty($childIds)) {
+             return [];
+         }
++
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
+ 
+         $selectQueries = [];
+         $otherQueries = [];

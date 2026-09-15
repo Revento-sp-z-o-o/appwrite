@@ -1,0 +1,29 @@
+{
+  "upstream_appwrite": {
+    "tag": "2.0.0",
+    "commit": "033c6303e352b9307f0e53fff15fb631882674d6",
+    "image": "appwrite/appwrite@sha256:27ca3f70d06fb0f4751e93cba03c49f96562236986f9b688185ee1c0e1f7e9aa"
+  },
+  "upstream_database": {
+    "version": "7.3.4",
+    "commit": "debef429479c86d8b5610a32e390651855131e7d"
+  },
+  "patches": [
+    {
+      "name": "http-native-curl",
+      "file": "http-native-curl.patch",
+      "target": "app/http.php",
+      "before_sha256": "40d1aea04fcbc60305e0e448be4a62f8836a078011fe720a1226869b4d8c5f38",
+      "after_sha256": "573e5481a81667643195a65ee00d17d1866aff78fc336388c1e5c78ec9927a05",
+      "patch_sha256": "d6d9ab1f2f9e5964ec3df660c73d675c7d1f7626a88902a1fc56b773edeab888"
+    },
+    {
+      "name": "relationship-lookups",
+      "file": "relationship-lookups.patch",
+      "target": "vendor/utopia-php/database/src/Database/Database.php",
+      "before_sha256": "ade0f0a598547f31993b53656cfdc8758a729191953003fddfb4152194360a46",
+      "after_sha256": "517ff7043de41921f984b1efc42d3a15679ac3f86eca80535a57d45478fc0cde",
+      "patch_sha256": "964534ddff9c1331f8a82aba79ebde5406c3e63ae80e3d146889e5862599e9ee"
+    }
+  ]
+}
