@@ -29,6 +29,7 @@ const base = `/tablesdb/${database}`;
 const pending = new Set();
 let created = null;
 let ambiguous = false;
+let failed = false;
 let socket;
 let acceptance;
 const frames = [];
@@ -39,7 +40,7 @@ let closing = false;
 const receipts = [];
 const save = (name, value) => writeFile(join(output, name), JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
 async function state() {
-  await save('state.json', { database, created, pending: [...pending], ambiguous });
+  await save('state.json', { database, created, pending: [...pending], ambiguous, failed });
 }
 async function call(method, path, body, allowed = [200, 201, 202, 204]) {
   assert(path === '/tablesdb' || path.startsWith(`${base}/`) || path === base || path === '/tablesdb/transactions' || [...pending].some(id => path === `/tablesdb/transactions/${id}` || path === `/tablesdb/transactions/${id}/operations`));
@@ -178,6 +179,9 @@ try {
   socket.close();
   acceptance = { passed: true, issue: 'ENG-2083', evidenceLabel: config.evidenceLabel, expectedImage: config.expectedImage, operations: operations.length, events: frames.length, exactOrderAndPayloads: true, precommitInvisible: true, precommitEventsAbsent: true, committedStateVerified: true, rollbackPreserved: true, noExtraEventsObservationMs: 2000, scope: 'API/realtime synthetic fixture; no function publication, ownership/actor matrix, or webhook/function delivery qualification' };
 
+} catch (error) {
+  failed = true;
+  throw error;
 } finally {
   if (socket) {
     closing = true;
@@ -188,10 +192,21 @@ try {
     socket.close();
     await Promise.race([closed, new Promise(resolve => setTimeout(resolve, 2000))]);
   }
+  let closeError;
+  if (acceptance) {
+    try {
+      assert.equal(socket.readyState, WebSocket.CLOSED, 'Realtime close handshake did not complete');
+      assert.equal(frames.length, acceptance.events, 'Extra event arrived during socket close');
+      assert.equal(errors.length, 0, 'Realtime error during socket close');
+    } catch (error) {
+      failed = true;
+      closeError = error;
+    }
+  }
   await save('requests.json', receipts);
   await save('events.json', frames);
   await state();
-  if (created && !pending.size && !ambiguous) {
+  if (created && !pending.size && !ambiguous && !failed) {
     const fresh = await call('GET', base);
     for (const key of ['$id', '$createdAt', 'name']) assert.equal(fresh[key], created[key], 'Ownership changed');
     await call('DELETE', base);
@@ -199,12 +214,10 @@ try {
     await save('cleanup.json', { database, closed: true, absenceVerified: true });
     console.log(JSON.stringify({ database, closed: true }));
   } else if (created) {
-    console.error('Fixture retained: pending or ambiguous operation. Inspect private receipt before cleanup.');
+    console.error('Fixture retained: acceptance failed, or operation state is pending or ambiguous. Inspect private receipt before cleanup.');
   }
-  if (acceptance) {
-    assert.equal(socket.readyState, WebSocket.CLOSED, 'Realtime close handshake did not complete');
-    assert.equal(frames.length, acceptance.events, 'Extra event arrived during socket close');
-    assert.equal(errors.length, 0, 'Realtime error during socket close');
+  if (closeError) throw closeError;
+  if (acceptance && !failed) {
     await save('acceptance.json', acceptance);
     console.log(JSON.stringify({ passed: true, evidenceLabel: config.evidenceLabel, database, operations: acceptance.operations, events: frames.length }));
   }

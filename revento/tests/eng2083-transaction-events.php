@@ -252,6 +252,9 @@ $before = fingerprints($derived);
 $payload = $derived[$mirrors]['r0']->getArrayCopy();
 $payload['thread']['label'] = 'mutated derived payload';
 check(fingerprints($derived) === $before, 'Derived event payload changed shared document');
+$derived[$mirrors]['r0']->getAttribute('thread')->setAttribute('label', 'mutated returned document');
+$reread = batch([operation($first, 12, 'update', 'r0')]);
+check(fingerprints($reread) === $before, 'Returned document mutation changed a subsequent read');
 $checks[] = 'derived event payload mutation isolation';
 
 $database->updateDocument($writeOnly, 'r0', new Document(['label' => 'committed write']));
