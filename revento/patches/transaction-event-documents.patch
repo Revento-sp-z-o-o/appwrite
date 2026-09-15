@@ -1,0 +1,79 @@
+--- a/src/Appwrite/Databases/TransactionState.php
++++ b/src/Appwrite/Databases/TransactionState.php
+@@ -33,6 +33,76 @@
+         $this->getDatabasesDB = $getDatabasesDB;
+     }
+ 
++
++
++    /**
++     * Load final readable documents for a bounded batch of committed operations.
++     *
++     * Fetches are deduplicated; callers still replay every operation in order.
++     * Delete payloads come from their staged snapshots, not these final reads.
++     * The map is request-local and must be discarded after each batch.
++     *
++     * @param array<array|Document> $operations
++     * @return array<string, array<string, Document>>
++     */
++    public function getCommittedDocuments(array $operations): array
++    {
++        if (count($operations) > 100) {
++            throw new \InvalidArgumentException('Committed document batch exceeds 100 operations');
++        }
++
++        $groups = [];
++        foreach ($operations as $operation) {
++            $data = $operation['data'];
++            if ($data instanceof Document) {
++                $data = $data->getArrayCopy();
++            }
++            $id = match ($operation['action']) {
++                'create', 'upsert' => $operation['documentId'] ?? $data['$id'] ?? null,
++                'update', 'increment', 'decrement' => $operation['documentId'],
++                default => null,
++            };
++            if (!$id) {
++                continue;
++            }
++            $databaseId = $operation['databaseInternalId'];
++            $collectionId = "database_{$databaseId}_collection_{$operation['collectionInternalId']}";
++            $groups[$databaseId][$collectionId][$id] = $id;
++        }
++
++        $documents = [];
++        foreach ($groups as $databaseId => $collections) {
++            $database = $this->authorization->skip(fn () => $this->dbForProject->skipFilters(
++                fn () => $this->dbForProject->findOne('databases', [
++                    Query::equal('$sequence', [$databaseId]),
++                ]),
++                APP_DATABASES_SUBQUERIES
++            ));
++            $dbForDatabases = ($this->getDatabasesDB)($database);
++            foreach ($collections as $collectionId => $ids) {
++                // Keep caller authorization and full relationship population.
++                try {
++                    $found = $dbForDatabases->find($collectionId, [
++                        Query::equal('$id', array_values($ids)),
++                        Query::limit(count($ids)),
++                    ]);
++                } catch (Exception\Authorization) {
++                    // A write-only collection can deny find while getDocument
++                    // returns an empty document. Preserve individual-read semantics.
++                    $found = [];
++                    foreach ($ids as $id) {
++                        $found[] = $dbForDatabases->getDocument($collectionId, $id);
++                    }
++                }
++                foreach ($found as $document) {
++                    if (!$document->isEmpty()) {
++                        $documents[$collectionId][$document->getId()] = $document;
++                    }
++                }
++            }
++        }
++        return $documents;
++    }
+ 
+     /**
+      * Get a document with transaction-aware logic

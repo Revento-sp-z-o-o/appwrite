@@ -12,6 +12,8 @@ production release.
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Avoid loading relationship collection metadata before empty/delegating branches. | Local PostgreSQL relationship regression comparison passed; API and publication qualification pending. |
 | `transaction-limit` | Let self-hosted operators configure transaction capacity (ENG-2082). | Default remains 100; configured capacity requires API qualification before deployment acceptance. |
+| `transaction-event-documents` | Load committed event documents in bounded batches (ENG-2083). | Native library comparison passes; candidate API acceptance required. |
+| `transaction-event-reads` | Use bounded final reads for PostgreSQL legacy/TablesDB transaction events (ENG-2083). | Write phase and event dispatch remain byte-identical; candidate API acceptance required. |
 
 The database patch changes Utopia's dependency code, not Revento functions or SDKs.
 It keeps relationship traversal, write-side inverse maintenance, authorization,
@@ -43,7 +45,7 @@ Keep the prior qualified digest available for rollback.
 
 Every build first runs installer positive/negative controls for every patched target,
 applies the verified patches, then syntax-checks the changed files and runs the
-ENG-2082 bootstrap configuration regression. The pinned patch utility is removed
+ENG-2082 bootstrap configuration regression and ENG-2083 write/dispatch boundary guards. The pinned patch utility is removed
 after the build. Pull requests run the same relationship fixture on upstream and
 candidate images against PostgreSQL 18.3 with both memory and Redis caches. These
 CI services are ephemeral and contain only synthetic test data.
@@ -79,6 +81,65 @@ Sending smaller staging batches does not bypass it. Higher capacity does not
 increase execution deadlines or make larger commits faster. Qualify the intended
 workload and test boundary rejection, rollback and atomicity through the real API
 before accepting a deployment.
+
+## Transaction event reads (ENG-2083)
+
+PostgreSQL legacy/TablesDB commits now fetch final event documents in windows of
+at most 100 operations. Fetches are deduplicated by logical database, collection
+and document ID; the original event loop still replays each operation in order.
+Create/update/upsert events use readable final state; delete events retain their
+staged snapshots. The write phase, commit/rollback code, and event dispatch are
+unchanged. Other adapters and DocumentsDB/VectorsDB retain individual reads.
+
+`TransactionState::getCommittedDocuments` retains normal caller authorization and
+full relationship population. If a collection denies list access, it falls back
+to individual reads to preserve the existing empty result for write-only callers.
+The fetched map is discarded between windows. Each window observes state when it
+is fetched, so concurrent changes can become visible between windows; this is not
+a transaction-wide historical snapshot or an event-delivery atomicity guarantee.
+
+The ticketed native API cost reproducer on the preceding image measured 23,944
+Redis HGETs and a 34.294-second commit for 150 synthetic relationship-heavy changes.
+Its cost budget of 18,000 failed before production edits. Writes were verified and
+the isolated fixture removed. Hardware saturation and disk blocking were not
+supported by preceding matched diagnostic windows; raising transaction capacity
+alone does not address these repeated reads.
+
+The focused native PostgreSQL comparison of final reads passes with unchanged
+Utopia dependencies: 8,250 cache loads become 162 across 300 operations. Seven
+behavior groups cover exact nested values/array order, batch boundaries, mixed
+logical namespaces and operations, payload-copy isolation, write-only collections,
+owner/outsider/anonymous visibility, and fresh/rolled-back state. This is a library
+result, not a full-publication performance claim. CI runs the same comparison with
+PostgreSQL 18.3 and memory/Redis caches. `REVENTO_TRANSACTION_SOURCE` selects the
+hash-pinned original or candidate TransactionState source, with the existing
+patched Utopia source supplied through `REVENTO_DATABASE_SOURCE`.
+
+`tests/eng2083-api.mjs` is a separate synthetic API/realtime acceptance harness,
+using Node 22+ built-ins. It tests 106 operations across the read-window boundary,
+105 ordered realtime events, duplicate IDs across tables, final payloads, deleted
+row snapshots, create-then-delete, precommit invisibility and explicit rollback.
+It observes a two-second quiet interval and checks all frames after socket close.
+It does not certify function/webhook delivery, transaction ownership/actor matrices,
+failed-commit atomicity, indefinite absence of late events, or full Program150.
+
+Supply a private mode-600 JSON config containing `endpoint`, `project`, `apiKey`,
+`syntheticOnly: true`, `evidenceLabel` (`baseline-harness-validation` or
+`candidate-acceptance`) and `expectedImage` (immutable SHA256 image). For remote
+synthetic targets, also set `targetName` and explicitly pass `--remote=TARGET_NAME`.
+The target image must be independently verified before and after the run;
+`expectedImage` records the expectation and is not an API attestation. Local runs
+require loopback and a project ID starting with `eng2083`. The target must allow
+at least 106 operations. Never use real data or a production project.
+
+```sh
+node revento/tests/eng2083-api.mjs /private/qualification.json /private/new-evidence-directory
+```
+
+Run only with the appropriate environment authorization. A new owned database and
+transaction journal are created; committed/rolled-back fixtures are removed with
+identity and absence checks. Ambiguous or pending mutations retain the fixture for
+inspection. Baseline harness validation must not be reported as candidate acceptance.
 
 ## Qualification
 

@@ -32,6 +32,22 @@
       "before_sha256": "b1a99bde0a647f5178dad25557ce588fecef10cd2a5e1832488ca99f2e7f78e6",
       "after_sha256": "a3029d0e62b49256840666c008ba662e381e4c2446ef864cb1fc0ba0bd71f8a9",
       "patch_sha256": "c5f252c1803153e1d751c0641bbebb6a598962f68cc72cca9afb037fa62409e6"
+    },
+    {
+      "name": "transaction-event-documents",
+      "file": "transaction-event-documents.patch",
+      "target": "src/Appwrite/Databases/TransactionState.php",
+      "before_sha256": "0f80cc85a4f023a8d15aba19fe126ff66e56754dd0c1b15ef8ba7df00e01e0f3",
+      "after_sha256": "88430aa3db4605018de6721451e2346893aba1d80cd37b7def8dc17b8d45998e",
+      "patch_sha256": "08953367c481929808269cf045681221a2c6b5edbdab89c5dfd07dc30ed4225a"
+    },
+    {
+      "name": "transaction-event-reads",
+      "file": "transaction-event-reads.patch",
+      "target": "src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php",
+      "before_sha256": "d7f7879e94e4ea7e08e8ad5e97af39d5354f415f7ce3495d86608a4835a626a2",
+      "after_sha256": "7f4168b5d391722ca3194e63bbb6089e32ad8cb3df556b4cfb578122b19b1abe",
+      "patch_sha256": "f03484208c92c942a08002d8cd698020bc9146d473af61b210a5155b96b8eccf"
     }
   ]
 }

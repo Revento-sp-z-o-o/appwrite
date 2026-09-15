@@ -1,0 +1,53 @@
+--- a/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
++++ b/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
+@@ -355,7 +355,16 @@
+             }
+ 
+             $dbCache = [];
+-            foreach ($operations as $operation) {
++            // Qualify this optimization only for the PostgreSQL table APIs.
++            $batchReads = in_array($this->getDatabaseType(), [LEGACY, TABLESDB], true)
++                && $dbForDatabases->getAdapter() instanceof \Utopia\Database\Adapter\Postgres;
++            $documents = [];
++            foreach ($operations as $index => $operation) {
++                if ($batchReads && $index % 100 === 0) {
++                    // Release the previous graph before loading the next bounded batch.
++                    $documents = [];
++                    $documents = $transactionState->getCommittedDocuments(array_slice($operations, $index, 100));
++                }
+                 $databaseInternalId = $operation['databaseInternalId'];
+                 $collectionInternalId = $operation['collectionInternalId'];
+                 $collectionId = "database_{$databaseInternalId}_collection_{$collectionInternalId}";
+@@ -415,7 +424,9 @@
+                         $eventAction = 'create';
+                         $docId = $documentId ?? $data['$id'] ?? null;
+                         if ($docId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $docId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$docId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $docId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
+@@ -426,7 +437,9 @@
+                     case 'decrement':
+                         $eventAction = 'update';
+                         if ($documentId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $documentId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$documentId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $documentId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
+@@ -442,7 +455,9 @@
+                         $eventAction = 'update';
+                         $docId = $documentId ?? $data['$id'] ?? null;
+                         if ($docId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $docId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$docId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $docId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
