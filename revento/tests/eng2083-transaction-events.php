@@ -2,6 +2,7 @@
 
 use Utopia\Cache\Adapter\Memory;
 use Utopia\Cache\Cache;
+use Utopia\Database\Adapter\Pool as DatabasePool;
 use Utopia\Database\Adapter\Postgres;
 use Utopia\Database\Database;
 use Utopia\Database\Document;
@@ -10,6 +11,8 @@ use Utopia\Database\Helpers\Role;
 use Utopia\Database\PDO;
 use Utopia\Database\Query;
 use Utopia\Database\Validator\Authorization;
+use Utopia\Pools\Adapter\Stack;
+use Utopia\Pools\Pool;
 
 $variant = $argv[1] ?? '';
 if (!in_array($variant, ['original', 'candidate'], true)) {
@@ -73,8 +76,17 @@ if ($cacheMode === 'redis') {
     $cache = new CountingRedis($redis);
 }
 $authorization = new Authorization();
-$database = new Database(new Postgres($pdo), new Cache($cache));
+// Match Appwrite Factory::adapter: database operations use the pooled adapter.
+$pool = new Pool(new Stack(), $schema, 1, static fn () => new Postgres(new PDO(
+    getenv('RELATION_PG_DSN'),
+    getenv('RELATION_PG_USER'),
+    getenv('RELATION_PG_PASSWORD'),
+    Postgres::getPDOAttributes()
+)), timeout: 5);
+$database = new Database(new DatabasePool($pool), new Cache($cache));
 $database->setDatabase($schema)->setNamespace('probe_' . $variant . '_' . $cacheMode)->setAuthorization($authorization);
+check(!($database->getAdapter() instanceof Postgres), 'Fixture must exercise pooled PostgreSQL');
+check($database->getAdapter()->getDriver()->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql', 'Pooled driver must identify PostgreSQL');
 $database->create();
 $permissions = [Permission::read(Role::user('owner')), Permission::create(Role::user('owner')), Permission::update(Role::user('owner')), Permission::delete(Role::user('owner'))];
 $authorization->addRole(Role::user('owner')->toString());

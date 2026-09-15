@@ -46,8 +46,8 @@
       "file": "transaction-event-reads.patch",
       "target": "src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php",
       "before_sha256": "d7f7879e94e4ea7e08e8ad5e97af39d5354f415f7ce3495d86608a4835a626a2",
-      "after_sha256": "7f4168b5d391722ca3194e63bbb6089e32ad8cb3df556b4cfb578122b19b1abe",
-      "patch_sha256": "f03484208c92c942a08002d8cd698020bc9146d473af61b210a5155b96b8eccf"
+      "after_sha256": "9fdd3cee6d0dbfc17d1aad91d1d5cbe2c43c5b0433198dfaed2da155e40b5b12",
+      "patch_sha256": "c126c7cf9a8686b4bed61052bf4e372b75f92b8bff3680728332c1fc3e372c7a"
     }
   ]
 }

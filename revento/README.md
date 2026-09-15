@@ -90,6 +90,9 @@ and document ID; the original event loop still replays each operation in order.
 Create/update/upsert events use readable final state; delete events retain their
 staged snapshots. The write phase, commit/rollback code, and event dispatch are
 unchanged. Other adapters and DocumentsDB/VectorsDB retain individual reads.
+The PostgreSQL guard reads the underlying Utopia PDO driver name through the
+adapter pool; checking the outer adapter class would silently disable batching.
+The library fixture uses this same pooled adapter shape.
 
 `TransactionState::getCommittedDocuments` retains normal caller authorization and
 full relationship population. If a collection denies list access, it falls back
@@ -138,8 +141,8 @@ node revento/tests/eng2083-api.mjs /private/qualification.json /private/new-evid
 
 Run only with the appropriate environment authorization. A new owned database and
 transaction journal are created; committed/rolled-back fixtures are removed with
-identity and absence checks. Ambiguous or pending mutations retain the fixture for
-inspection. Baseline harness validation must not be reported as candidate acceptance.
+identity and absence checks. Acceptance failures, ambiguous or pending mutations
+retain the fixture for inspection. Baseline harness validation must not be reported as candidate acceptance.
 
 ## Qualification
 

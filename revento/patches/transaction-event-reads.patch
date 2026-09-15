@@ -1,13 +1,15 @@
 --- a/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
 +++ b/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
-@@ -355,7 +355,16 @@
+@@ -355,7 +355,18 @@
              }
  
              $dbCache = [];
 -            foreach ($operations as $operation) {
-+            // Qualify this optimization only for the PostgreSQL table APIs.
++            // Appwrite wraps its adapter in a pool; identify the underlying driver.
++            $driver = $dbForDatabases->getAdapter()->getDriver();
 +            $batchReads = in_array($this->getDatabaseType(), [LEGACY, TABLESDB], true)
-+                && $dbForDatabases->getAdapter() instanceof \Utopia\Database\Adapter\Postgres;
++                && $driver instanceof \Utopia\Database\PDO
++                && $driver->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql';
 +            $documents = [];
 +            foreach ($operations as $index => $operation) {
 +                if ($batchReads && $index % 100 === 0) {
@@ -18,7 +20,7 @@
                  $databaseInternalId = $operation['databaseInternalId'];
                  $collectionInternalId = $operation['collectionInternalId'];
                  $collectionId = "database_{$databaseInternalId}_collection_{$collectionInternalId}";
-@@ -415,7 +424,9 @@
+@@ -415,7 +426,9 @@
                          $eventAction = 'create';
                          $docId = $documentId ?? $data['$id'] ?? null;
                          if ($docId) {
@@ -29,7 +31,7 @@
                              if (!$doc->isEmpty()) {
                                  $documentsToTrigger[] = $doc;
                              }
-@@ -426,7 +437,9 @@
+@@ -426,7 +439,9 @@
                      case 'decrement':
                          $eventAction = 'update';
                          if ($documentId) {
@@ -40,7 +42,7 @@
                              if (!$doc->isEmpty()) {
                                  $documentsToTrigger[] = $doc;
                              }
-@@ -442,7 +455,9 @@
+@@ -442,7 +457,9 @@
                          $eventAction = 'update';
                          $docId = $documentId ?? $data['$id'] ?? null;
                          if ($docId) {
