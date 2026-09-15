@@ -11,6 +11,7 @@ production release.
 | --- | --- | --- |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Avoid loading relationship collection metadata before empty/delegating branches. | Local PostgreSQL relationship regression comparison passed; API and publication qualification pending. |
+| `transaction-limit` | Let self-hosted operators configure transaction capacity (ENG-2082). | Default remains 100; configured capacity requires API qualification before deployment acceptance. |
 
 The database patch changes Utopia's dependency code, not Revento functions or SDKs.
 It keeps relationship traversal, write-side inverse maintenance, authorization,
@@ -40,8 +41,9 @@ deploys or changes an environment. Use immutable image digests for deployments;
 record the source commit, manifest and qualification report alongside that digest.
 Keep the prior qualified digest available for rollback.
 
-Every build first runs installer positive/negative controls, applies the verified
-patches, then syntax-checks both changed files. The pinned patch utility is removed
+Every build first runs installer positive/negative controls for every patched target,
+applies the verified patches, then syntax-checks the changed files and runs the
+ENG-2082 bootstrap configuration regression. The pinned patch utility is removed
 after the build. Pull requests run the same relationship fixture on upstream and
 candidate images against PostgreSQL 18.3 with both memory and Redis caches. These
 CI services are ephemeral and contain only synthetic test data.
@@ -55,6 +57,28 @@ For a native local test, provide an isolated loopback PostgreSQL database and PH
 the source hash and requires loopback access; it creates distinct schemas and cache
 namespaces for each variant. `RELATION_CACHE=redis` additionally requires a dedicated
 local Redis service and the PHP Redis extension. The default uses memory.
+
+## Transaction capacity
+
+Set `_APP_LIMIT_DATABASE_TRANSACTION` on API containers to choose the maximum
+number of operations in one transaction. The default remains **100**. For example,
+`_APP_LIMIT_DATABASE_TRANSACTION=1000` allows the same operation count as Cloud Pro.
+The value is read at process startup; recreate the relevant containers through the
+normal reviewed deployment process to change it. No deployment occurs automatically.
+
+The setting follows the existing `_APP_LIMIT_DATABASE_BATCH` parsing convention:
+the shared environment reader treats an unset, empty or `0` value as the default
+100; other values are converted to an integer and clamped to at least 1. Negative
+and nonnumeric values therefore become 1, and no value disables the limit. Bulk request size remains a
+separate setting. Cloud's `databasesTransactionSize` plan value still takes
+precedence over this self-hosted default; all existing transaction entry points
+continue to use the same shared constant.
+
+This controls cumulative staged operations across all requests in a transaction.
+Sending smaller staging batches does not bypass it. Higher capacity does not
+increase execution deadlines or make larger commits faster. Qualify the intended
+workload and test boundary rejection, rollback and atomicity through the real API
+before accepting a deployment.
 
 ## Qualification
 

@@ -10,7 +10,9 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
        REVENTO_APPWRITE_SOURCE=/usr/src/code php /tmp/revento/tests/patches.php \
     && php /tmp/revento/apply.php /usr/src/code \
     && php -l /usr/src/code/app/http.php \
+    && php -l /usr/src/code/app/init/constants.php \
     && php -l /usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
+    && php /tmp/revento/tests/eng2082-transaction-limit.php \
     && mkdir -p /usr/local/share/revento \
     && cp /tmp/revento/manifest.json /usr/local/share/revento/manifest.json \
     && rm -r /tmp/revento \

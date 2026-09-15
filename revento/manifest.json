@@ -24,6 +24,14 @@
       "before_sha256": "ade0f0a598547f31993b53656cfdc8758a729191953003fddfb4152194360a46",
       "after_sha256": "517ff7043de41921f984b1efc42d3a15679ac3f86eca80535a57d45478fc0cde",
       "patch_sha256": "964534ddff9c1331f8a82aba79ebde5406c3e63ae80e3d146889e5862599e9ee"
+    },
+    {
+      "name": "transaction-limit",
+      "file": "transaction-limit.patch",
+      "target": "app/init/constants.php",
+      "before_sha256": "b1a99bde0a647f5178dad25557ce588fecef10cd2a5e1832488ca99f2e7f78e6",
+      "after_sha256": "a3029d0e62b49256840666c008ba662e381e4c2446ef864cb1fc0ba0bd71f8a9",
+      "patch_sha256": "c5f252c1803153e1d751c0641bbebb6a598962f68cc72cca9afb037fa62409e6"
     }
   ]
 }

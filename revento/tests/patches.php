@@ -14,15 +14,22 @@ $temporary = sys_get_temp_dir() . '/revento-patch-test-' . bin2hex(random_bytes(
 mkdir($temporary, 0700);
 $checks = [];
 try {
-    foreach (['valid', 'changed-first', 'changed-last'] as $scenario) {
+    $scenarios = ['valid' => null];
+    foreach ($manifest['patches'] as $index => $patch) {
+        $scenarios['changed-' . $patch['name']] = $index;
+    }
+    foreach ($scenarios as $scenario => $changedIndex) {
         $root = $temporary . '/' . $scenario;
-        mkdir($root . '/app', 0700, true);
-        mkdir($root . '/vendor/utopia-php/database/src/Database', 0700, true);
-        copy($appwrite . '/app/http.php', $root . '/app/http.php');
-        copy($source, $root . '/vendor/utopia-php/database/src/Database/Database.php');
-        if ($scenario !== 'valid') {
-            $index = $scenario === 'changed-first' ? 0 : 1;
-            file_put_contents($root . '/' . $manifest['patches'][$index]['target'], "\n// unreviewed change\n", FILE_APPEND);
+        foreach ($manifest['patches'] as $patch) {
+            $target = $root . '/' . $patch['target'];
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0700, true);
+            }
+            $original = $patch['name'] === 'relationship-lookups' ? $source : $appwrite . '/' . $patch['target'];
+            copy($original, $target);
+        }
+        if ($changedIndex !== null) {
+            file_put_contents($root . '/' . $manifest['patches'][$changedIndex]['target'], "\n// unreviewed change\n", FILE_APPEND);
         }
         $before = [];
         foreach ($manifest['patches'] as $patch) {
