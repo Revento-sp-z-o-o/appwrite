@@ -135,5 +135,16 @@
     "No popular-activity throughput claim; ENG-2094 remains open.",
     "The immutable image contains the qualified runtime patches; later evidence/documentation additions are outside runtime source.",
     "Only the executions API is configured; direct function domains retain their separate upstream 60-second deadline."
-  ]
+  ],
+  "dev2_activation": {
+    "source_commit": "0b32ff257d018a49e93c869bb1d09b7a94651e1b",
+    "candidate_image": "sha256:ae5c5ff4df582659f11de948f2236810c16e54b0682be00be915f7b6a0bf4a0a",
+    "timeout_seconds": 90,
+    "deployed": true,
+    "rollback_performed": false,
+    "other_services_unchanged": true,
+    "live_source_hashes_verified": 8,
+    "finished_utc": "2026-09-16T02:33:09.408986+00:00",
+    "parity_basis": "qualified source manifest; final live hashes verified"
+  }
 }

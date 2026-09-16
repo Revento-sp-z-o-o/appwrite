@@ -9,10 +9,10 @@ production release.
 
 | Patch | Reason | Status |
 | --- | --- | --- |
-| `synchronous-timeout` | Operator-configurable synchronous function request deadline (ENG-2093); default 30 seconds. | Candidate pending API qualification. |
+| `synchronous-timeout` | Operator-configurable synchronous execution-API wait deadline (ENG-2093); default 30 seconds. | Isolated real-API profiles passed; see the sanitized deadline receipts. |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
-| `operator-variables` | Register maintained settings in the packaged variable registry; the repository Compose definition forwards them. | Transaction-limit registration and rendered Compose checks. |
+| `operator-variables` | Register maintained settings in the packaged variable registry; the repository Compose definition forwards them. | Transaction-limit and execution-API timeout registration and rendered Compose checks passed. |
 | `transaction-limit` | Let self-hosted operators configure transaction capacity (ENG-2082). | Default remains 100; configured capacity requires API qualification before deployment acceptance. |
 | `transaction-event-documents` | Bounded final event reads (ENG-2083), identity/permission staging reads (ENG-2084). | Native and local API acceptance passed. |
 | `transaction-event-reads` | Bounded final events and guarded old-row reads for PostgreSQL transaction updates. | Only declared internal read changes; event dispatch and rollback boundaries verified. |
@@ -257,7 +257,7 @@ No workflow deploys remotely or migrates production data.
 
 Transaction cache correctness qualification and limits: [ENG-2091](qualification/ENG-2091.md). This adds invalidation at the outer SQL transaction boundary; it does not qualify signup queue throughput or prevent writer-side uncommitted cache publication (ENG-2092).
 
-## Synchronous function deadline (ENG-2093)
+## Synchronous execution API deadline (ENG-2093)
 
 Set `_APP_FUNCTIONS_SYNC_TIMEOUT` on API containers to an integer number of seconds from 1 through 900. Unset, empty, malformed, zero, negative and out-of-range values use 30 seconds. The upstream default remains 30. Recreate the API service to apply a changed environment; deployments are explicit and no workflow applies this automatically.
 
