@@ -3,7 +3,6 @@
   "image": "sha256:c19e7347c81d4e044664641d009708d6bafc14f8b3af1c5259cbaa80fdf72edf",
   "scope": "Synthetic isolated project and loopback API container on authorized dev2; shared executor and workers",
   "main_api_unchanged": true,
-  "owned_project_function_containers_cleaned": true,
   "profiles": {
     "default": {
       "passed": true,
@@ -134,7 +133,8 @@
     "The operator wait deadline does not extend caller/proxy deadlines or remove runtime duration limits.",
     "No popular-activity throughput claim; ENG-2094 remains open.",
     "The immutable image contains the qualified runtime patches; later evidence/documentation additions are outside runtime source.",
-    "Only the executions API is configured; direct function domains retain their separate upstream 60-second deadline."
+    "Only the executions API is configured; direct function domains retain their separate upstream 60-second deadline.",
+    "The owned function runtime remained idle for normal executor expiry after API deletion; cleanup here refers to the project, function record and isolated API containers."
   ],
   "dev2_activation": {
     "source_commit": "0b32ff257d018a49e93c869bb1d09b7a94651e1b",
@@ -146,5 +146,6 @@
     "live_source_hashes_verified": 8,
     "finished_utc": "2026-09-16T02:33:09.408986+00:00",
     "parity_basis": "qualified source manifest; final live hashes verified"
-  }
+  },
+  "owned_project_function_api_containers_cleaned": true
 }
