@@ -1,6 +1,64 @@
 --- a/vendor/utopia-php/database/src/Database/Database.php
 +++ b/vendor/utopia-php/database/src/Database/Database.php
-@@ -5295,7 +5295,6 @@
+@@ -380,7 +380,12 @@
+     protected Adapter $adapter;
+ 
+     protected Cache $cache;
++
++    private int $transactionDepth = 0;
+ 
++    /** @var array<string, string> Document cache key to collection cache key. */
++    private array $transactionCachePurges = [];
++
+     protected string $cacheName = 'default';
+ 
+     /**
+@@ -1653,7 +1658,43 @@
+      */
+     public function withTransaction(callable $callback): mixed
+     {
+-        return $this->adapter->withTransaction($callback);
++        $this->transactionDepth++;
++        $failure = null;
++        try {
++            return $this->adapter->withTransaction($callback);
++        } catch (\Throwable $error) {
++            $failure = $error;
++            throw $error;
++        } finally {
++            $this->transactionDepth--;
++            if ($this->transactionDepth === 0) {
++                // Nested writes purge before the outer SQL transaction commits.
++                // Invalidate again once it ends so concurrent readers cannot retain
++                // the previous committed value (or a negative cache entry).
++                $purges = $this->transactionCachePurges;
++                $this->transactionCachePurges = [];
++                $cacheFailure = null;
++                foreach ($purges as $documentKey => $collectionKey) {
++                    try {
++                        $this->cache->purge($collectionKey, $documentKey);
++                    } catch (\Throwable $error) {
++                        $cacheFailure ??= $error;
++                    }
++                    try {
++                        $this->cache->purge($documentKey);
++                    } catch (\Throwable $error) {
++                        $cacheFailure ??= $error;
++                    }
++                }
++                if ($cacheFailure !== null) {
++                    if ($failure === null) {
++                        throw $cacheFailure;
++                    }
++                    // Preserve the transaction failure when cleanup also fails.
++                    Console::warning('Warning: Failed to invalidate document cache after rollback.');
++                }
++            }
++        }
+     }
+ 
+     /**
+@@ -5295,7 +5336,6 @@
      private function populateOneToOneRelationshipsBatch(array $documents, Document $relationship, array $queries): array
      {
          $key = $relationship['key'];
@@ -8,16 +66,16 @@
  
          $relatedIds = [];
          $documentsByRelatedId = [];
-@@ -5320,6 +5319,8 @@
-         if (empty($relatedIds)) {
+@@ -5321,6 +5361,8 @@
              return [];
          }
-+
-+        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
  
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
++
          $uniqueRelatedIds = \array_unique($relatedIds);
          $relatedDocuments = [];
-@@ -5377,7 +5378,6 @@
+ 
+@@ -5377,7 +5419,6 @@
          $twoWay = $relationship['options']['twoWay'];
          $twoWayKey = $relationship['options']['twoWayKey'];
          $side = $relationship['options']['side'];
@@ -25,16 +83,16 @@
  
          if ($side === Database::RELATION_SIDE_CHILD) {
              // Child side - treat like one-to-one
-@@ -5402,6 +5402,8 @@
-         if (empty($parentIds)) {
+@@ -5403,6 +5444,8 @@
              return [];
          }
-+
-+        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
  
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
++
          // For batch relationship population, we need to fetch documents with all attributes
          // to enable proper grouping by back-reference, then apply selects afterward
-@@ -5475,7 +5477,6 @@
+         $selectQueries = [];
+@@ -5475,7 +5518,6 @@
          $twoWay = $relationship['options']['twoWay'];
          $twoWayKey = $relationship['options']['twoWayKey'];
          $side = $relationship['options']['side'];
@@ -42,16 +100,16 @@
  
          if ($side === Database::RELATION_SIDE_PARENT) {
              // Parent side - treat like one-to-one
-@@ -5501,6 +5502,8 @@
-         if (empty($childIds)) {
+@@ -5502,6 +5544,8 @@
              return [];
          }
-+
-+        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
  
++        $relatedCollection = $this->getCollection($relationship['options']['relatedCollection']);
++
          $selectQueries = [];
          $otherQueries = [];
-@@ -6296,19 +6299,44 @@
+         foreach ($queries as $query) {
+@@ -6296,19 +6340,44 @@
       * @throws DatabaseException
       * @throws StructureException
       */
@@ -99,3 +157,15 @@
              ));
              if ($old->isEmpty()) {
                  return new Document();
+@@ -8556,6 +8625,11 @@
+ 
+         [$collectionKey, $documentKey] = $this->getCacheKeys($collectionId, $id);
+ 
++        if ($this->transactionDepth > 0) {
++            // Capture resolved keys now: tenant/namespace can change before commit.
++            $this->transactionCachePurges[$documentKey] = $collectionKey;
++        }
++
+         $this->cache->purge($collectionKey, $documentKey);
+         $this->cache->purge($documentKey);
+ 

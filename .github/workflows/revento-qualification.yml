@@ -109,3 +109,19 @@ jobs:
             -e RELATION_PG_USER=relation_probe \
             -e RELATION_PG_PASSWORD=synthetic-ci-only \
             revento/appwrite:qualification /qualification/tests/eng2084-transaction-reads.php candidate
+
+      - name: Qualify outer transaction cache consistency
+        run: |
+          set -euo pipefail
+          for cache in memory redis; do
+            docker run --rm --network host --entrypoint php \
+              --mount "type=bind,source=$GITHUB_WORKSPACE/revento,target=/qualification,readonly" \
+              -e REVENTO_DATABASE_AUTOLOAD=/usr/src/code/vendor/autoload.php \
+              -e REVENTO_DATABASE_SOURCE=/usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
+              -e 'RELATION_PG_DSN=pgsql:host=127.0.0.1;port=5432;dbname=relation_probe' \
+              -e RELATION_PG_USER=relation_probe \
+              -e RELATION_PG_PASSWORD=synthetic-ci-only \
+              -e "RELATION_CACHE=$cache" \
+              -e RELATION_OWNED_REDIS=127.0.0.1:6379 \
+              revento/appwrite:qualification /qualification/tests/eng2091-transaction-cache.php
+          done

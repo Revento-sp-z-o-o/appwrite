@@ -22,8 +22,8 @@
       "file": "relationship-lookups.patch",
       "target": "vendor/utopia-php/database/src/Database/Database.php",
       "before_sha256": "ade0f0a598547f31993b53656cfdc8758a729191953003fddfb4152194360a46",
-      "after_sha256": "835404c7c1d01f7bf882474a47df2edbe097bbce00e5fabc930a7e03e2d42731",
-      "patch_sha256": "b10bcba1703588d1f79ed6b68417674f203a2894e0d9801256bc381a75acd363"
+      "after_sha256": "f481dea11fadfd05f1372e98510b45931deba92a96b038ad42bc27c82e7f110b",
+      "patch_sha256": "f7e15a6542b9af1173d9392f7b6d22c86949de0d6b7ea9abfe344cfdef7640c5"
     },
     {
       "name": "transaction-limit",

@@ -10,7 +10,7 @@ production release.
 | Patch | Reason | Status |
 | --- | --- | --- |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
-| `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084). | Native and local API comparison passed; dev2 publication acceptance pending. |
+| `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
 | `transaction-limit` | Let self-hosted operators configure transaction capacity (ENG-2082). | Default remains 100; configured capacity requires API qualification before deployment acceptance. |
 | `transaction-event-documents` | Bounded final event reads (ENG-2083), identity/permission staging reads (ENG-2084). | Native and local API acceptance passed. |
 | `transaction-event-reads` | Bounded final events and guarded old-row reads for PostgreSQL transaction updates. | Only declared internal read changes; event dispatch and rollback boundaries verified. |
@@ -244,3 +244,5 @@ See [ENG-2084 qualification](qualification/ENG-2084.md) for measured results and
 limits. The earlier Program150 synchronous failure remains unresolved until the
 reviewed image is explicitly deployed to dev2 and tested with the Events function.
 No workflow deploys remotely or migrates production data.
+
+Transaction cache correctness qualification and limits: [ENG-2091](qualification/ENG-2091.md). This adds invalidation at the outer SQL transaction boundary; it does not qualify signup queue throughput or prevent writer-side uncommitted cache publication (ENG-2092).
