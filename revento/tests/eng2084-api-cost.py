@@ -18,15 +18,20 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 # Credentials remain on the explicitly selected loopback socket.
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
+def require(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('config', type=Path)
 parser.add_argument('output', type=Path)
 args = parser.parse_args()
-assert args.config.stat().st_mode & 0o077 == 0
+require(args.config.stat().st_mode & 0o077 == 0, 'Qualification guard failed: args.config.stat().st_mode & 0o077 == 0')
 config = json.loads(args.config.read_text())
-assert config.get('evidenceLabel') == 'candidate-acceptance'
-assert config['endpoint'] == 'http://127.0.0.1:18084/v1' and config['syntheticOnly'] is True
-assert config['project'].startswith('eng208')
+require(config.get('evidenceLabel') == 'candidate-acceptance', "Qualification guard failed: config.get('evidenceLabel') == 'candidate-acceptance'")
+require(config['endpoint'] == 'http://127.0.0.1:18084/v1' and config['syntheticOnly'] is True, "Qualification guard failed: config['endpoint'] == 'http://127.0.0.1:18084/v1' and config['syntheticOnly'] is True")
+require(config['project'].startswith('eng208'), "Qualification guard failed: config['project'].startswith('eng208')")
 args.output.mkdir(mode=0o700)
 name = 'eng2084qualification'
 database = 'qcost_' + secrets.token_hex(6)
@@ -69,7 +74,7 @@ def call(method, path, body=None, variant='candidate', statuses=(200, 201, 202, 
             uncertain_write = True
         steps.append({'method': method, 'path': path, 'status': response.status, 'variant': variant})
         save('steps.json', steps)
-        assert response.status in statuses, (method, path, response.status, body.get('type'))
+        require(response.status in statuses, (method, path, response.status, body.get('type')))
         return body
 
 def hgets():
@@ -81,10 +86,10 @@ def ready(table):
     deadline = time.monotonic() + 60
     while True:
         rows = call('GET', base + '/tables/' + table + '/columns')['columns']
-        assert not any(row['status'] in ['failed', 'stuck'] for row in rows)
+        require(not any((row['status'] in ['failed', 'stuck'] for row in rows)), "Qualification guard failed: not any((row['status'] in ['failed', 'stuck'] for row in rows))")
         if all(row['status'] == 'available' for row in rows):
             return
-        assert time.monotonic() < deadline
+        require(time.monotonic() < deadline, 'Qualification guard failed: time.monotonic() < deadline')
         time.sleep(.1)
 
 def relation(table, target, key, inverse, two_way=True):
@@ -98,10 +103,10 @@ identities = {}
 for service, source_hash in [('api', expected), ('baseline', '517ff7043de41921f984b1efc42d3a15679ac3f86eca80535a57d45478fc0cde')]:
     container = name + '-' + service + '-1'
     inspection = json.loads(subprocess.check_output(['docker', 'inspect', container], text=True))[0]
-    assert inspection['Config']['Labels']['com.docker.compose.project'] == name
-    assert inspection['State']['Running'] is True
+    require(inspection['Config']['Labels']['com.docker.compose.project'] == name, "Qualification guard failed: inspection['Config']['Labels']['com.docker.compose.project'] == name")
+    require(inspection['State']['Running'] is True, "Qualification guard failed: inspection['State']['Running'] is True")
     digest = subprocess.check_output(['docker', 'exec', container, 'sha256sum', '/usr/src/code/vendor/utopia-php/database/src/Database/Database.php'], text=True).split()[0]
-    assert digest == source_hash
+    require(digest == source_hash, 'Qualification guard failed: digest == source_hash')
     identities[service] = {'id': inspection['Id'], 'image': inspection['Image'], 'database_sha256': digest}
 save('intent.json', {'database': database, 'project': config['project'], 'containers': identities, 'syntheticOnly': True})
 try:
@@ -135,16 +140,16 @@ try:
         before = hgets()
         start = time.monotonic()
         result = call('PATCH', '/tablesdb/transactions/' + tx, {'commit': True}, variant)
-        assert result['status'] == 'committed'
+        require(result['status'] == 'committed', "Qualification guard failed: result['status'] == 'committed'")
         metrics[variant].update(commit_seconds=time.monotonic() - start, commit_hgets=hgets() - before)
         pending.remove(tx)
         save('pending.json', sorted(pending))
         save('metrics.json', metrics)
         for i in range(150):
-            assert call('GET', base + '/tables/mirrors/rows/r' + str(i))['label'] == variant
+            require(call('GET', base + '/tables/mirrors/rows/r' + str(i))['label'] == variant, "Qualification guard failed: call('GET', base + '/tables/mirrors/rows/r' + str(i))['label'] == variant")
         print(json.dumps({variant: metrics[variant]}), flush=True)
-    assert metrics['candidate']['stage_hgets'] < metrics['baseline']['stage_hgets'] * .5, 'Staging route did not remove relationship expansion'
-    assert metrics['candidate']['commit_hgets'] < metrics['baseline']['commit_hgets'] * .9, 'Commit route did not narrow old-row reads'
+    require(metrics['candidate']['stage_hgets'] < metrics['baseline']['stage_hgets'] * 0.5, 'Staging route did not remove relationship expansion')
+    require(metrics['candidate']['commit_hgets'] < metrics['baseline']['commit_hgets'] * 0.9, 'Commit route did not narrow old-row reads')
     save('result.json', {'passed': True, 'metrics': metrics, 'rows_verified_each_variant': 150})
 except Exception:
     failed = True
@@ -154,10 +159,10 @@ finally:
     # Do not erase an ambiguous/unfinished transaction or its fixture.
     if created and not pending and not failed and not uncertain_write:
         fresh = call('GET', base)
-        assert all(fresh[key] == created[key] for key in ['$id', '$createdAt', 'name'])
+        require(all((fresh[key] == created[key] for key in ['$id', '$createdAt', 'name'])), "Qualification guard failed: all((fresh[key] == created[key] for key in ['$id', '$createdAt', 'name']))")
         call('DELETE', base)
         call('GET', base, statuses=(404,))
         save('cleanup.json', {'closed': True, 'database_absent': True})
-assert (args.output / 'result.json').is_file()
-assert (args.output / 'cleanup.json').is_file()
+require((args.output / 'result.json').is_file(), "Qualification guard failed: (args.output / 'result.json').is_file()")
+require((args.output / 'cleanup.json').is_file(), "Qualification guard failed: (args.output / 'cleanup.json').is_file()")
 print('ENG2084 native API wiring comparison passed and fixture closed', flush=True)

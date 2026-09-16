@@ -34,6 +34,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Verify qualification target guards
+        run: python3 revento/tests/test_qualification_guards.py -v
       - name: Build pinned candidate
         run: docker build --platform linux/amd64 -f revento/Dockerfile -t revento/appwrite:qualification .
       - name: Compare actual packaged database code
