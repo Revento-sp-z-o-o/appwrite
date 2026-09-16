@@ -1,0 +1,12 @@
+--- a/app/init/constants.php
++++ b/app/init/constants.php
+@@ -92,7 +92,8 @@
+ // Default maximum batch size for database operations. Self-hosted operators can raise this
+ // for their own hardware; on Cloud the plan's databasesBatchSize takes precedence.
+ \define('APP_LIMIT_DATABASE_BATCH', \max(1, (int) System::getEnv('_APP_LIMIT_DATABASE_BATCH', 100)));
+-const APP_LIMIT_DATABASE_TRANSACTION = 100; // Default maximum operations per transaction
++// Self-hosted transaction capacity; Cloud's databasesTransactionSize takes precedence.
++\define('APP_LIMIT_DATABASE_TRANSACTION', \max(1, (int) System::getEnv('_APP_LIMIT_DATABASE_TRANSACTION', 100)));
+ const APP_KEY_ACCESS = 24 * 60 * 60; // 24 hours
+ const APP_USER_ACCESS = 24 * 60 * 60; // 24 hours
+ const APP_PROJECT_ACCESS = 24 * 60 * 60; // 24 hours

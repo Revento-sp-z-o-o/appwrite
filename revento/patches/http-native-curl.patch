@@ -1,0 +1,12 @@
+--- a/app/http.php
++++ b/app/http.php
+@@ -56,6 +56,9 @@
+     host: "0.0.0.0",
+     port: System::getEnv('PORT', 80),
+     settings: [
++        // Let synchronous executor HTTP waits yield to function API callbacks.
++        Constant::OPTION_ENABLE_COROUTINE => true,
++        Constant::OPTION_HOOK_FLAGS => SWOOLE_HOOK_NATIVE_CURL,
+         Constant::OPTION_WORKER_NUM => $totalWorkers,
+         Constant::OPTION_HTTP_COMPRESSION => false,
+         Constant::OPTION_PACKAGE_MAX_LENGTH => $payloadSize,

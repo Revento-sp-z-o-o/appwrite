@@ -1,0 +1,113 @@
+--- a/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
++++ b/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php
+@@ -191,6 +191,10 @@
+             }
+ 
+             $dbForDatabases = $getDatabasesDB($databaseDoc);
++            $driver = $dbForDatabases->getAdapter()->getDriver();
++            $fetchOldRelationshipIdsOnly = \in_array($this->getDatabaseType(), [LEGACY, TABLESDB], true)
++                && $driver instanceof \Utopia\Database\PDO
++                && $driver->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql';
+ 
+             try {
+                 $transaction = $authorization->skip(fn () => $dbForProject->updateDocument(
+@@ -218,7 +222,7 @@
+                     }
+                 }
+ 
+-                $dbForDatabases->withTransaction(function () use ($dbForDatabases, $transactionState, &$operations, &$totalOperations, &$databaseOperations, &$currentDocumentId, $collections) {
++                $dbForDatabases->withTransaction(function () use ($dbForDatabases, $transactionState, &$operations, &$totalOperations, &$databaseOperations, &$currentDocumentId, $collections, $fetchOldRelationshipIdsOnly) {
+                     $state = [];
+ 
+                     foreach ($operations as $operation) {
+@@ -259,7 +263,7 @@
+                                 $this->handleCreateOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state);
+                                 break;
+                             case 'update':
+-                                $this->handleUpdateOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state);
++                                $this->handleUpdateOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state, $fetchOldRelationshipIdsOnly);
+                                 break;
+                             case 'upsert':
+                                 $this->handleUpsertOperation($dbForDatabases, $collectionId, $documentId, $data, $createdAt, $state);
+@@ -355,7 +359,18 @@
+             }
+ 
+             $dbCache = [];
+-            foreach ($operations as $operation) {
++            // Appwrite wraps its adapter in a pool; identify the underlying driver.
++            $driver = $dbForDatabases->getAdapter()->getDriver();
++            $batchReads = in_array($this->getDatabaseType(), [LEGACY, TABLESDB], true)
++                && $driver instanceof \Utopia\Database\PDO
++                && $driver->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql';
++            $documents = [];
++            foreach ($operations as $index => $operation) {
++                if ($batchReads && $index % 100 === 0) {
++                    // Release the previous graph before loading the next bounded batch.
++                    $documents = [];
++                    $documents = $transactionState->getCommittedDocuments(array_slice($operations, $index, 100));
++                }
+                 $databaseInternalId = $operation['databaseInternalId'];
+                 $collectionInternalId = $operation['collectionInternalId'];
+                 $collectionId = "database_{$databaseInternalId}_collection_{$collectionInternalId}";
+@@ -415,7 +430,9 @@
+                         $eventAction = 'create';
+                         $docId = $documentId ?? $data['$id'] ?? null;
+                         if ($docId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $docId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$docId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $docId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
+@@ -426,7 +443,9 @@
+                     case 'decrement':
+                         $eventAction = 'update';
+                         if ($documentId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $documentId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$documentId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $documentId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
+@@ -442,7 +461,9 @@
+                         $eventAction = 'update';
+                         $docId = $documentId ?? $data['$id'] ?? null;
+                         if ($docId) {
+-                            $doc = $dbForDatabases->getDocument($collectionId, $docId);
++                            $doc = $batchReads
++                                ? ($documents[$collectionId][$docId] ?? new Document())
++                                : $dbForDatabases->getDocument($collectionId, $docId);
+                             if (!$doc->isEmpty()) {
+                                 $documentsToTrigger[] = $doc;
+                             }
+@@ -587,7 +608,8 @@
+         string $documentId,
+         array $data,
+         \DateTime $createdAt,
+-        array &$state
++        array &$state,
++        bool $fetchOldRelationshipIdsOnly
+     ): void {
+         $dependent = isset($state[$collectionId][$documentId]);
+ 
+@@ -596,15 +618,17 @@
+                 $collectionId,
+                 $documentId,
+                 new Document($data),
++                fetchOldRelationshipIdsOnly: $fetchOldRelationshipIdsOnly,
+             );
+             return;
+         }
+ 
+-        $dbForProject->withRequestTimestamp($createdAt, function () use ($dbForProject, $collectionId, $documentId, $data, &$state) {
++        $dbForProject->withRequestTimestamp($createdAt, function () use ($dbForProject, $collectionId, $documentId, $data, &$state, $fetchOldRelationshipIdsOnly) {
+             $document = $dbForProject->updateDocument(
+                 $collectionId,
+                 $documentId,
+                 new Document($data),
++                fetchOldRelationshipIdsOnly: $fetchOldRelationshipIdsOnly,
+             );
+             if ($document->isEmpty()) {
+                 throw new NotFoundException('');
