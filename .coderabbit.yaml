@@ -7,6 +7,7 @@ reviews:
   auto_review:
     base_branches:
       - 'revento/2\.0-maintenance'
+      - 'revento/relationship-lookup-candidate'
       - main
       - 1.6.x
       - 1.7.x

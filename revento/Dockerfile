@@ -17,6 +17,7 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
     && php -l /usr/src/code/src/Appwrite/Databases/TransactionState.php \
     && php -l /usr/src/code/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php \
     && php -l /usr/src/code/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Operations/Create.php \
+    && php -l /usr/src/code/src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php \
     && php /tmp/revento/tests/eng2083-integrity.php /usr/src/code \
     && mkdir -p /usr/local/share/revento \
     && cp /tmp/revento/manifest.json /usr/local/share/revento/manifest.json \

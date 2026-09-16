@@ -62,8 +62,16 @@
       "file": "operator-variables.patch",
       "target": "app/config/variables.php",
       "before_sha256": "3ee482414ca0a2713e984b162f7c4224430f9e473c48a5a17e9fc053b42f6433",
-      "after_sha256": "7d7860b185eb8a6791597fe9b8400861dec58911ccb91057747a93b12f943f4c",
-      "patch_sha256": "465bdd46d3e1c6aca8065e14d18e26fd126f883fef6c9722d92f3cebc7adc9f1"
+      "after_sha256": "35cb935beec12d075a8dbe3ed55f39ba8c4e073d4ff12a4ac58e7dac3bede925",
+      "patch_sha256": "dc4e8c917eb3ff93a5afb01f29fc0aadbe0a9f109500e63c09b0d8385eec55bc"
+    },
+    {
+      "name": "synchronous-timeout",
+      "file": "synchronous-timeout.patch",
+      "target": "src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php",
+      "before_sha256": "8f5e380dc824a7ce12b25566491ec118750539b967ef80554e12e59c0e076d6c",
+      "after_sha256": "08520c1e8f7a3a7b6e934651869c31199d468b8436a489b3c3563896afa35f75",
+      "patch_sha256": "e2b456a6963667cae4118c89e588f275fd24badf8593b46df035bd448b4c5bff"
     }
   ]
 }

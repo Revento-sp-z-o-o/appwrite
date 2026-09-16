@@ -5,8 +5,12 @@ require $root . '/vendor/autoload.php';
 \Utopia\Config\Config::setParam('runtimes', []);
 $groups = require $root . '/app/config/variables.php';
 $matches = [];
+$timeouts = [];
 foreach ($groups as $group) {
     foreach ($group['variables'] as $variable) {
+        if ($variable['name'] === '_APP_FUNCTIONS_SYNC_TIMEOUT') {
+            $timeouts[] = $variable;
+        }
         if ($variable['name'] === '_APP_LIMIT_DATABASE_TRANSACTION') {
             $matches[] = $variable;
         }
@@ -14,5 +18,8 @@ foreach ($groups as $group) {
 }
 if (count($matches) !== 1 || $matches[0]['default'] !== '100' || $matches[0]['required'] !== false) {
     throw new RuntimeException('Transaction setting must have one optional installer entry with default100');
+}
+if (count($timeouts) !== 1 || $timeouts[0]['default'] !== '30' || $timeouts[0]['required'] !== false) {
+    throw new RuntimeException('Synchronous timeout requires one optional installer entry with default30');
 }
 echo json_encode(['passed' => true, 'installer_default' => $matches[0]['default']]) . "\n";
