@@ -99,7 +99,11 @@
           "response_status": 0,
           "type": null
         }
-      ]
+      ],
+      "async_terminal": {
+        "status": "completed",
+        "response_status": 200
+      }
     },
     "malformed": {
       "passed": true,
@@ -129,6 +133,7 @@
     "One execution per behavioral case, not a latency distribution or throughput benchmark.",
     "The operator wait deadline does not extend caller/proxy deadlines or remove runtime duration limits.",
     "No popular-activity throughput claim; ENG-2094 remains open.",
-    "The immutable image contains the qualified runtime patches; later evidence/documentation additions are outside runtime source."
+    "The immutable image contains the qualified runtime patches; later evidence/documentation additions are outside runtime source.",
+    "Only the executions API is configured; direct function domains retain their separate upstream 60-second deadline."
   ]
 }

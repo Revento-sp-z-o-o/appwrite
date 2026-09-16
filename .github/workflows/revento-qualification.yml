@@ -36,6 +36,8 @@ jobs:
           persist-credentials: false
       - name: Verify qualification target guards
         run: python3 revento/tests/test_qualification_guards.py -v
+      - name: Verify deadline qualification cleanup recovery
+        run: python3 revento/tests/test_eng2093_cleanup.py -v
       - name: Verify maintained Compose environment forwarding
         run: python3 revento/tests/eng2082-compose.py
       - name: Build pinned candidate

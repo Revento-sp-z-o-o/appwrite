@@ -62,8 +62,8 @@
       "file": "operator-variables.patch",
       "target": "app/config/variables.php",
       "before_sha256": "3ee482414ca0a2713e984b162f7c4224430f9e473c48a5a17e9fc053b42f6433",
-      "after_sha256": "3a9aadc214a667601eefd5f6782451f00cf99882874e6d2b389f4bd0c2a26918",
-      "patch_sha256": "20cd1001ae1a689346ffbb26cf485b52a94b9953bb5d653e0afd61bad4ba2f9c"
+      "after_sha256": "35cb935beec12d075a8dbe3ed55f39ba8c4e073d4ff12a4ac58e7dac3bede925",
+      "patch_sha256": "dc4e8c917eb3ff93a5afb01f29fc0aadbe0a9f109500e63c09b0d8385eec55bc"
     },
     {
       "name": "synchronous-timeout",

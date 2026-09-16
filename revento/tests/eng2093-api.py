@@ -125,12 +125,28 @@ def main():
         return
 
     state = json.loads(state_file.read_text())
-    require(state['project'] == config['project'] and state.get('created') and not state['closed'], 'Fixture state mismatch')
+    require(state['project'] == config['project'] and not state['closed'], 'Fixture state mismatch')
     fid = state['function']
-    function = call('GET', '/functions/' + fid)
-    require(function['$createdAt'] == state['created_at'] and function['name'] == fid, 'Function ownership mismatch')
+    require(fid.startswith('deadline_') and len(fid) == 25 and all(c in '0123456789abcdef' for c in fid[9:]), 'Owned function ID required')
     if args.phase == 'cleanup':
         require(not state.get('active_until_epoch') or time.time() > state['active_until_epoch'], 'Potential runtime work still active')
+    status, function = request('GET', '/functions/' + fid)
+    if args.phase == 'cleanup' and status == 404:
+        state.update(closed=True, cleaned_utc=utc(), cleanup_result='already_absent')
+        state_file.write_text(json.dumps(state, indent=2))
+        print(json.dumps({'cleaned': True, 'already_absent': True}))
+        return
+    require(status == 200 and function.get('$id') == fid and function.get('name') == fid, 'Function ownership mismatch')
+    if state.get('created'):
+        require(function['$createdAt'] == state['created_at'], 'Function creation identity mismatch')
+    else:
+        require(args.phase == 'cleanup', 'Ambiguous creation requires cleanup')
+        intended = datetime.datetime.fromisoformat(state['intent_utc'])
+        created = datetime.datetime.fromisoformat(function['$createdAt'].replace('Z', '+00:00'))
+        require(-5 <= (created - intended).total_seconds() <= 120
+                and function.get('runtime') == 'dart-3.11'
+                and function.get('execute') == [] and function.get('scopes') == [], 'Ambiguous fixture ownership mismatch')
+    if args.phase == 'cleanup':
         q = [json.dumps({'method': 'equal', 'attribute': 'status', 'values': ['waiting', 'processing']}),
              json.dumps({'method': 'limit', 'values': [1]})]
         pending = call('GET', '/functions/' + fid + '/executions?' + urllib.parse.urlencode([('queries[]', value) for value in q]))

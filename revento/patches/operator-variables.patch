@@ -26,7 +26,7 @@
 +            ],
 +            [
 +                'name' => '_APP_FUNCTIONS_SYNC_TIMEOUT',
-+                'description' => 'HTTP wait limit for synchronous function execution in seconds. Integer 1 through 900; invalid values fall back to 30. Function runtime and caller timeouts remain independent. Default value is: 30.',
++                'description' => 'Wait limit for POST /v1/functions/{functionId}/executions with async:false, in seconds. Does not affect direct function domains or Sites. Integer 1 through 900; invalid values fall back to 30. Function runtime and caller timeouts remain independent. Default value is: 30.',
 +                'introduction' => '2.0.0',
 +                'default' => '30',
                  'required' => false,
