@@ -21,11 +21,16 @@ class Response(io.BytesIO):
 
 
 class OwnedAPI:
-    def __init__(self, function):
+    def __init__(self, function, failure=None):
+        self.failure = failure
         self.function = function
         self.deleted = False
 
     def open(self, request, timeout):
+        if self.failure == 'transport':
+            raise urllib.error.URLError('synthetic transport failure')
+        if self.failure == 'delete' and request.method == 'DELETE':
+            raise urllib.error.HTTPError(request.full_url, 503, 'synthetic failure', {}, io.BytesIO(b'{}'))
         if '/executions?' in request.full_url:
             return Response(200, {'executions': []})
         if request.method == 'DELETE':
@@ -38,12 +43,12 @@ class OwnedAPI:
 
 
 class CleanupTest(unittest.TestCase):
-    def run_cleanup(self, exists=True, wrong_time=False, wrong_name=False, live=False):
+    def run_cleanup(self, exists=True, wrong_time=False, wrong_name=False, live=False, failure=None):
         fid = 'deadline_0123456789abcdef'
         function = {'$id': fid, 'name': 'unrelated' if wrong_name else fid,
                     '$createdAt': '2026-09-15T00:00:00Z' if wrong_time else '2026-09-16T00:00:01Z',
                     'runtime': 'dart-3.11', 'execute': [], 'scopes': []}
-        api = OwnedAPI(function if exists else None)
+        api = OwnedAPI(function if exists else None, failure=failure)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = root/'config.json'
@@ -57,16 +62,34 @@ class CleanupTest(unittest.TestCase):
                 state['active_until_epoch'] = 9999999999
             fixture = root/'fixture.json'
             fixture.write_text(json.dumps(state))
+            output = io.StringIO()
             with patch('sys.argv', ['probe', str(config), str(root), '--phase', 'cleanup']), \
                     patch.object(harness.urllib.request, 'build_opener', return_value=api), \
-                    contextlib.redirect_stdout(io.StringIO()):
-                if wrong_time or wrong_name or live:
+                    contextlib.redirect_stdout(output):
+                if wrong_time or wrong_name or live or failure:
                     with self.assertRaises(RuntimeError):
                         harness.main()
                 else:
                     harness.main()
             final = json.loads(fixture.read_text())
+            if failure:
+                self.assertFalse(final['closed'])
+                self.assertEqual(final['cleanup_result'], 'pending')
+                self.assertEqual(json.loads(output.getvalue()), {'cleaned': False, 'cleanup_pending': True})
+                api.failure = None
+                with patch('sys.argv', ['probe', str(config), str(root), '--phase', 'cleanup']), \
+                        patch.object(harness.urllib.request, 'build_opener', return_value=api), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    harness.main()
+                final = json.loads(fixture.read_text())
+                self.assertEqual(final['cleanup_result'], 'deleted')
         return api.deleted, final['closed']
+
+    def test_transport_failure_records_pending_and_rerun_cleans(self):
+        self.assertEqual(self.run_cleanup(failure='transport'), (True, True))
+
+    def test_delete_failure_records_pending_and_rerun_cleans(self):
+        self.assertEqual(self.run_cleanup(failure='delete'), (True, True))
 
     def test_lost_create_response_can_clean_owned_function(self):
         self.assertEqual(self.run_cleanup(), (True, True))

@@ -130,33 +130,41 @@ def main():
     require(fid.startswith('deadline_') and len(fid) == 25 and all(c in '0123456789abcdef' for c in fid[9:]), 'Owned function ID required')
     if args.phase == 'cleanup':
         require(not state.get('active_until_epoch') or time.time() > state['active_until_epoch'], 'Potential runtime work still active')
-    status, function = request('GET', '/functions/' + fid)
-    if args.phase == 'cleanup' and status == 404:
-        state.update(closed=True, cleaned_utc=utc(), cleanup_result='already_absent')
+    try:
+        status, function = request('GET', '/functions/' + fid)
+        if args.phase == 'cleanup' and status == 404:
+            state.update(closed=True, cleaned_utc=utc(), cleanup_result='already_absent')
+            state_file.write_text(json.dumps(state, indent=2))
+            print(json.dumps({'cleaned': True, 'already_absent': True}))
+            return
+        require(status == 200 and function.get('$id') == fid and function.get('name') == fid, 'Function ownership mismatch')
+        if state.get('created'):
+            require(function['$createdAt'] == state['created_at'], 'Function creation identity mismatch')
+        else:
+            require(args.phase == 'cleanup', 'Ambiguous creation requires cleanup')
+            intended = datetime.datetime.fromisoformat(state['intent_utc'])
+            created = datetime.datetime.fromisoformat(function['$createdAt'].replace('Z', '+00:00'))
+            require(-5 <= (created - intended).total_seconds() <= 120
+                    and function.get('runtime') == 'dart-3.11'
+                    and function.get('execute') == [] and function.get('scopes') == [], 'Ambiguous fixture ownership mismatch')
+        if args.phase == 'cleanup':
+            q = [json.dumps({'method': 'equal', 'attribute': 'status', 'values': ['waiting', 'processing']}),
+                 json.dumps({'method': 'limit', 'values': [1]})]
+            pending = call('GET', '/functions/' + fid + '/executions?' + urllib.parse.urlencode([('queries[]', value) for value in q]))
+            require(not pending['executions'], 'Nonterminal execution prevents cleanup')
+            call('DELETE', '/functions/' + fid)
+            require(request('GET', '/functions/' + fid)[0] == 404, 'Deleted function still present')
+            state.update(closed=True, cleaned_utc=utc(), cleanup_result='deleted')
+            state_file.write_text(json.dumps(state, indent=2))
+            print(json.dumps({'cleaned': True}))
+            return
+    except (RuntimeError, urllib.error.URLError, OSError):
+        if args.phase != 'cleanup':
+            raise
+        state.update(closed=False, cleanup_result='pending', cleanup_attempt_utc=utc())
         state_file.write_text(json.dumps(state, indent=2))
-        print(json.dumps({'cleaned': True, 'already_absent': True}))
-        return
-    require(status == 200 and function.get('$id') == fid and function.get('name') == fid, 'Function ownership mismatch')
-    if state.get('created'):
-        require(function['$createdAt'] == state['created_at'], 'Function creation identity mismatch')
-    else:
-        require(args.phase == 'cleanup', 'Ambiguous creation requires cleanup')
-        intended = datetime.datetime.fromisoformat(state['intent_utc'])
-        created = datetime.datetime.fromisoformat(function['$createdAt'].replace('Z', '+00:00'))
-        require(-5 <= (created - intended).total_seconds() <= 120
-                and function.get('runtime') == 'dart-3.11'
-                and function.get('execute') == [] and function.get('scopes') == [], 'Ambiguous fixture ownership mismatch')
-    if args.phase == 'cleanup':
-        q = [json.dumps({'method': 'equal', 'attribute': 'status', 'values': ['waiting', 'processing']}),
-             json.dumps({'method': 'limit', 'values': [1]})]
-        pending = call('GET', '/functions/' + fid + '/executions?' + urllib.parse.urlencode([('queries[]', value) for value in q]))
-        require(not pending['executions'], 'Nonterminal execution prevents cleanup')
-        call('DELETE', '/functions/' + fid)
-        require(request('GET', '/functions/' + fid)[0] == 404, 'Deleted function still present')
-        state.update(closed=True, cleaned_utc=utc())
-        state_file.write_text(json.dumps(state, indent=2))
-        print(json.dumps({'cleaned': True}))
-        return
+        print(json.dumps({'cleaned': False, 'cleanup_pending': True}))
+        raise RuntimeError('Cleanup pending; rerun --phase cleanup with the same fixture') from None
 
     require(args.case is not None and state.get('ready'), 'Ready fixture and case required')
     require(config.get('case') == args.case, 'Configuration case must match independently deployed API profile')
@@ -210,7 +218,8 @@ def main():
                     and '1 seconds' in body.get('message', '') and elapsed < 5, 'Configured1 deadline failed')
             time.sleep(max(0, 4 - elapsed))
             status, body, elapsed = execute(3, asynchronous=True)
-            require(status == 202 and body.get('$id') and elapsed < 3, 'Async dispatch blocked')
+            require(status == 202 and body.get('$id') and body.get('status') == 'waiting'
+                    and elapsed < 3, 'Async dispatch blocked')
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
                 result = call('GET', '/functions/' + fid + '/executions/' + body['$id'])
