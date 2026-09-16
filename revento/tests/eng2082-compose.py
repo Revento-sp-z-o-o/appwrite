@@ -8,7 +8,7 @@ import tempfile
 root = Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix='eng2082-compose-') as directory:
     env_file = Path(directory) / '.env'
-    env_file.write_text('_APP_LIMIT_DATABASE_TRANSACTION=454\n')
+    env_file.write_text('_APP_LIMIT_DATABASE_TRANSACTION=454\n_APP_FUNCTIONS_SYNC_TIMEOUT=90\n')
     environment = {'PATH': os.environ['PATH'], 'HOME': os.environ['HOME']}
     result = subprocess.run(['docker', 'compose', '--project-directory', directory,
                              '--env-file', str(env_file), '--profile', '*', '-f',
@@ -26,4 +26,6 @@ with tempfile.TemporaryDirectory(prefix='eng2082-compose-') as directory:
             checked.append(name)
     if 'appwrite' not in checked:
         raise RuntimeError('API service was not checked')
+    if compose['services']['appwrite']['environment'].get('_APP_FUNCTIONS_SYNC_TIMEOUT') != '90':
+        raise RuntimeError('Synchronous timeout not forwarded to API')
 print(json.dumps({'passed': True, 'services': checked, 'configured_value': 454}))

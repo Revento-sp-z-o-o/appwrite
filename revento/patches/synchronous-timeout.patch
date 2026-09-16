@@ -1,0 +1,31 @@
+--- a/src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php
++++ b/src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php
+@@ -430,6 +430,11 @@
+ 
+             $source = $deployment->getAttribute('buildPath', '');
+             $command = $version === 'v2' ? '' : "nohup helpers/start.sh \"$command\"";
++            $requestTimeout = filter_var(
++                System::getEnv('_APP_FUNCTIONS_SYNC_TIMEOUT', 30),
++                FILTER_VALIDATE_INT,
++                ['options' => ['default' => 30, 'min_range' => 1, 'max_range' => 900]]
++            );
+             try {
+                 $executionResponse = $executor->createExecution(
+                     projectId: $project->getId(),
+@@ -448,10 +453,14 @@
+                     cpus: $spec['cpus'] ?? APP_COMPUTE_CPUS_DEFAULT,
+                     memory: $spec['memory'] ?? APP_COMPUTE_MEMORY_DEFAULT,
+                     logging: $function->getAttribute('logging', true),
+-                    requestTimeout: 30
++                    requestTimeout: $requestTimeout
+                 );
+             } catch (ExecutorTimeout $th) {
+-                throw new AppwriteException(AppwriteException::FUNCTION_SYNCHRONOUS_TIMEOUT, previous: $th);
++                throw new AppwriteException(
++                    AppwriteException::FUNCTION_SYNCHRONOUS_TIMEOUT,
++                    'Synchronous function execution timed out. Use asynchronous execution instead, or ensure the execution duration doesn\'t exceed ' . $requestTimeout . ' seconds.',
++                    previous: $th
++                );
+             }
+ 
+             $headersFiltered = [];

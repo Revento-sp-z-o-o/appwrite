@@ -9,6 +9,7 @@ production release.
 
 | Patch | Reason | Status |
 | --- | --- | --- |
+| `synchronous-timeout` | Operator-configurable synchronous function request deadline (ENG-2093); default 30 seconds. | Candidate pending API qualification. |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
 | `operator-variables` | Register maintained settings in the packaged variable registry; the repository Compose definition forwards them. | Transaction-limit registration and rendered Compose checks. |
@@ -255,3 +256,15 @@ reviewed image is explicitly deployed to dev2 and tested with the Events functio
 No workflow deploys remotely or migrates production data.
 
 Transaction cache correctness qualification and limits: [ENG-2091](qualification/ENG-2091.md). This adds invalidation at the outer SQL transaction boundary; it does not qualify signup queue throughput or prevent writer-side uncommitted cache publication (ENG-2092).
+
+## Synchronous function deadline (ENG-2093)
+
+Set `_APP_FUNCTIONS_SYNC_TIMEOUT` on API containers to an integer number of seconds from 1 through 900. Unset, empty, malformed, zero, negative and out-of-range values use 30 seconds. The upstream default remains 30. Recreate the API service to apply a changed environment; deployments are explicit and no workflow applies this automatically.
+
+This changes how long the API waits for a synchronous executor response. It does not change the function execution timeout, asynchronous dispatch, worker capacity or client/proxy timeouts. A function can still time out earlier. A client must wait longer than the configured API deadline plus network overhead to observe that outcome. A longer deadline does not cancel or safely retry work after disconnect and is not a throughput fix. The error message reports the effective configured request deadline. Qualify the complete caller path before rollout.
+
+The maintained Compose API service forwards `_APP_FUNCTIONS_SYNC_TIMEOUT`; existing operator-owned Compose files need the same environment entry before recreating the API. The packaged installer registry exposes the optional default of `30`.
+
+ENG-2093 real-API qualification uses `python3 revento/tests/eng2093-api.py PRIVATE_CONFIG OWNED_OUTPUT --phase prepare`, then `--phase case --case default|extended|short|malformed`, and finally `--phase cleanup`. A separate controller must verify and record the immutable image and actual API container environment before each case. The harness requires a private mode-600 config with endpoint `http://127.0.0.1:18084/v1`, an owned `eng2093` project, `apiKey`, `syntheticOnly: true`, `expectedImage`, `evidenceLabel: candidate-acceptance`, and matching `case`. Profiles use unset, 90, 1, and invalid respectively. It creates one side-effect-free Dart function; run only in a deliberately owned synthetic project with function/execution read-write scopes, preserve failed fixtures for diagnosis, and delete the project/key after function cleanup. Never substitute production identifiers.
+
+Sanitized behavioral receipts are in `revento/qualification/eng2093-deadlines.json`. Ordinary CI verifies patch pins, syntax and operator configuration; it does not provision an Appwrite stack or rerun this remote API harness automatically.

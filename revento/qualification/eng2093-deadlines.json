@@ -1,0 +1,134 @@
+{
+  "qualified_utc": "2026-09-16T02:09:58Z",
+  "image": "sha256:c19e7347c81d4e044664641d009708d6bafc14f8b3af1c5259cbaa80fdf72edf",
+  "scope": "Synthetic isolated project and loopback API container on authorized dev2; shared executor and workers",
+  "main_api_unchanged": true,
+  "owned_project_function_containers_cleaned": true,
+  "profiles": {
+    "default": {
+      "passed": true,
+      "checks": [
+        {
+          "delay_s": 0,
+          "async": false,
+          "http": 201,
+          "wall_s": 1.663,
+          "status": "completed",
+          "response_status": 200,
+          "type": null
+        },
+        {
+          "delay_s": 35,
+          "async": false,
+          "http": 408,
+          "wall_s": 30.055,
+          "status": null,
+          "response_status": null,
+          "type": "function_synchronous_timeout"
+        }
+      ]
+    },
+    "extended": {
+      "passed": true,
+      "checks": [
+        {
+          "delay_s": 0,
+          "async": false,
+          "http": 201,
+          "wall_s": 0.04,
+          "status": "completed",
+          "response_status": 200,
+          "type": null
+        },
+        {
+          "delay_s": 35,
+          "async": false,
+          "http": 201,
+          "wall_s": 35.046,
+          "status": "completed",
+          "response_status": 200,
+          "type": null
+        },
+        {
+          "delay_s": 0,
+          "async": false,
+          "http": 401,
+          "wall_s": 0.045,
+          "status": null,
+          "response_status": null,
+          "type": "user_unauthorized"
+        },
+        {
+          "delay_s": 3,
+          "async": false,
+          "http": 201,
+          "wall_s": 1.09,
+          "status": "failed",
+          "response_status": 500,
+          "type": null
+        }
+      ]
+    },
+    "short": {
+      "passed": true,
+      "checks": [
+        {
+          "delay_s": 0,
+          "async": false,
+          "http": 201,
+          "wall_s": 0.04,
+          "status": "completed",
+          "response_status": 200,
+          "type": null
+        },
+        {
+          "delay_s": 3,
+          "async": false,
+          "http": 408,
+          "wall_s": 1.037,
+          "status": null,
+          "response_status": null,
+          "type": "function_synchronous_timeout"
+        },
+        {
+          "delay_s": 3,
+          "async": true,
+          "http": 202,
+          "wall_s": 0.022,
+          "status": "waiting",
+          "response_status": 0,
+          "type": null
+        }
+      ]
+    },
+    "malformed": {
+      "passed": true,
+      "checks": [
+        {
+          "delay_s": 0,
+          "async": false,
+          "http": 201,
+          "wall_s": 0.041,
+          "status": "completed",
+          "response_status": 200,
+          "type": null
+        },
+        {
+          "delay_s": 35,
+          "async": false,
+          "http": 408,
+          "wall_s": 30.058,
+          "status": null,
+          "response_status": null,
+          "type": "function_synchronous_timeout"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "One execution per behavioral case, not a latency distribution or throughput benchmark.",
+    "The operator wait deadline does not extend caller/proxy deadlines or remove runtime duration limits.",
+    "No popular-activity throughput claim; ENG-2094 remains open.",
+    "The immutable image contains the qualified runtime patches; later evidence/documentation additions are outside runtime source."
+  ]
+}
