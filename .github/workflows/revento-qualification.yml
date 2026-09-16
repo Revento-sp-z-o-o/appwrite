@@ -3,7 +3,7 @@ name: Revento patch qualification
 on:
   pull_request:
     branches: [revento/2.0-maintenance]
-    paths: [revento/**, .github/workflows/revento-qualification.yml]
+    paths: [revento/**, docker-compose.yml, .github/workflows/revento-qualification.yml]
   workflow_dispatch:
 
 permissions:
@@ -36,6 +36,8 @@ jobs:
           persist-credentials: false
       - name: Verify qualification target guards
         run: python3 revento/tests/test_qualification_guards.py -v
+      - name: Verify maintained Compose environment forwarding
+        run: python3 revento/tests/eng2082-compose.py
       - name: Build pinned candidate
         run: docker build --platform linux/amd64 -f revento/Dockerfile -t revento/appwrite:qualification .
       - name: Compare actual packaged database code

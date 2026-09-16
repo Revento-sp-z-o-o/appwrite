@@ -56,6 +56,14 @@
       "before_sha256": "46b4b125ae85d8e6aaaeb5188f3355f398385d86601a00f0c596808f1aff77c3",
       "after_sha256": "f285d86dfd8f3bd7fc2e8f1a3f13ea4c043cea4cb55a8fb114c90ab4e319e4fa",
       "patch_sha256": "590394a7fd02b812aecc7f1f257775248c5cb5ccfe06d0193b64fc2f5b577dd6"
+    },
+    {
+      "name": "operator-variables",
+      "file": "operator-variables.patch",
+      "target": "app/config/variables.php",
+      "before_sha256": "3ee482414ca0a2713e984b162f7c4224430f9e473c48a5a17e9fc053b42f6433",
+      "after_sha256": "7d7860b185eb8a6791597fe9b8400861dec58911ccb91057747a93b12f943f4c",
+      "patch_sha256": "465bdd46d3e1c6aca8065e14d18e26fd126f883fef6c9722d92f3cebc7adc9f1"
     }
   ]
 }

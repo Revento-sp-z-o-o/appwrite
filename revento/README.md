@@ -11,6 +11,7 @@ production release.
 | --- | --- | --- |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
+| `operator-variables` | Register maintained settings in the packaged variable registry; the repository Compose definition forwards them. | Transaction-limit registration and rendered Compose checks. |
 | `transaction-limit` | Let self-hosted operators configure transaction capacity (ENG-2082). | Default remains 100; configured capacity requires API qualification before deployment acceptance. |
 | `transaction-event-documents` | Bounded final event reads (ENG-2083), identity/permission staging reads (ENG-2084). | Native and local API acceptance passed. |
 | `transaction-event-reads` | Bounded final events and guarded old-row reads for PostgreSQL transaction updates. | Only declared internal read changes; event dispatch and rollback boundaries verified. |
@@ -68,6 +69,14 @@ number of operations in one transaction. The default remains **100**. For exampl
 `_APP_LIMIT_DATABASE_TRANSACTION=1000` allows the same operation count as Cloud Pro.
 The value is read at process startup; recreate the relevant containers through the
 normal reviewed deployment process to change it. No deployment occurs automatically.
+
+The maintained image patches the variable registry. The repository
+`docker-compose.yml` forwards this setting wherever the existing batch setting
+is forwarded. The upstream API image does not contain a Compose file. Existing installations must add the environment entry to their own
+Compose service definition before recreating containers; editing `.env` alone does
+not add missing entries to an older Compose file. Use the qualified maintained
+image digest for the API service. Upstream PHP source files in this repository remain
+pristine; the patch manifest defines the packaged PHP changes.
 
 The setting follows the existing `_APP_LIMIT_DATABASE_BATCH` parsing convention:
 the shared environment reader treats an unset, empty or `0` value as the default
