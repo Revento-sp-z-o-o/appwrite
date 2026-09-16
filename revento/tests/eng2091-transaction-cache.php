@@ -208,7 +208,7 @@ try {
         } catch (\Throwable $error) {
             $observedError = $error->getMessage();
         }
-        $expectedError = $case === 'purge-failure-commit' ? 'owned index purge failure' : 'owned rollback';
+        $expectedError = $case === 'purge-failure-commit' ? null : 'owned rollback';
         requireEqual($observedError, $expectedError, 'Cleanup preserves correct error');
         $expected = $case === 'purge-failure-commit' ? 'missing' : 1;
         $actual = readState($reader, $case);
@@ -230,8 +230,8 @@ try {
         } catch (RuntimeException $error) {
             $observedError = $error->getMessage();
         }
-        $expectedError = $failureFlag === 'failNextIndexPurge' ? 'owned index purge failure' : 'owned document purge failure';
-        requireEqual($observedError, $expectedError, 'Purge failure reported after committed SQL');
+        $expectedError = null;
+        requireEqual($observedError, $expectedError, 'Committed result preserved despite cache cleanup failure');
         $actual = readState($reader, 'later_dirty');
         $results[] = ['case' => 'later-key-after-' . $failureFlag, 'expected' => 2, 'actual' => $actual, 'passed' => $actual === 2];
         // A failed document purge cannot guarantee that key is fresh. Repair only
