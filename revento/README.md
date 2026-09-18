@@ -9,6 +9,7 @@ production release.
 
 | Patch | Reason | Status |
 | --- | --- | --- |
+| `postgres-explicit-prefix` | Literal single-word prefixes on PostgreSQL (ENG-2114), including stopword/stem prefixes. | Native and packaged 62-case controls and isolated 46-case API matrix pass; routed Events acceptance pending. |
 | `synchronous-timeout` | Operator-configurable synchronous execution-API wait deadline (ENG-2093); default 30 seconds. | Isolated real-API profiles passed; see the sanitized deadline receipts. |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
@@ -270,3 +271,34 @@ ENG-2093 real-API qualification uses `python3 revento/tests/eng2093-api.py PRIVA
 Sanitized behavioral receipts are in `revento/qualification/eng2093-deadlines.json`. Ordinary CI verifies patch pins, syntax and operator configuration; it does not provision an Appwrite stack or rerun this remote API harness automatically.
 
 Scope: `_APP_FUNCTIONS_SYNC_TIMEOUT` controls only `POST /v1/functions/{functionId}/executions` with `async: false`, including SDK `createExecution` calls. Direct generated/custom function domains keep their upstream 60-second request deadline; Sites are unchanged. Use the asynchronous execution API for work that must outlive its caller. The qualified signup pump invokes the execution API and has a separate 210-second HTTP client timeout.
+
+## Explicit PostgreSQL word prefixes (ENG-2114)
+
+The PostgreSQL adapter stripped `*` before translating search, so the participant
+catalog query `zol*` missed `zolty`. The ninth hash-pinned patch recognizes only a
+complete Unicode letter/number token followed by one asterisk. Search and notSearch
+use a bound, case-insensitive literal word-prefix pattern, retaining prefixes such
+as `the*`, `runn*` and Arabic digits without dictionary stemming or token loss.
+Only the validated token enters the fixed pattern; regex operators are rejected.
+The boundary uses a generated Unicode letter/number class matching the pinned
+image's PCRE tables. PostgreSQL POSIX alnum alone excludes some numeric characters
+(such as `²`) and would create false word boundaries. The build-time generator
+verifies the constant against packaged PCRE; no Unicode enumeration runs per request.
+Ordinary searches, quoted phrases/tokens, multiword or malformed wildcard strings
+retain the existing sanitizer and websearch path. Permissions, null handling,
+column quoting, SDK validation and query composition are unchanged.
+
+`tests/eng2114-prefix.php` executes the actual pinned original and candidate adapters
+against an owned loopback PostgreSQL database named `eng2114_prefix_*`. Its 62 cases
+cover prefix/complement, Unicode and numeric words, AND/token/range composition,
+reader/outsider/anonymous predicates, dictionary boundaries and malformed grammar.
+The original must reproduce the prefix failure; the candidate must pass and retain
+all original non-prefix controls. Fixtures are transaction-local temporary tables,
+rolled back in finally. CI runs this against the packaged images.
+
+This patch changes no index DDL or database-wide text-search setting. It establishes
+query correctness, not scalable indexed search: the pinned adapter creates a raw
+attribute index for fulltext metadata, not a prefix-search index. The regex branch makes no index-use claim.
+The isolated Appwrite API actor/endpoint matrix passes; the unchanged ENG-2002
+Events tests remain a routed deployment gate. See [qualification evidence](qualification/ENG-2114-prefix.md). Index lifecycle and representative query-plan/performance
+qualification remain separate work before claiming production search readiness.
