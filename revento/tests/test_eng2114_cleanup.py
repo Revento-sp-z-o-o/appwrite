@@ -28,6 +28,7 @@ class OwnedAPI:
         self.lost_path = lost_path
         self.resources = {}
         self.fail_cleanup = False
+        self.cleanup_error = None
         self.intent_observed_before_post = False
 
     def open(self, request, timeout):
@@ -50,6 +51,8 @@ class OwnedAPI:
             if path == self.lost_path:
                 raise urllib.error.URLError('Synthetic lost create response')
             return Response(201, result)
+        if self.cleanup_error is not None and request.method == 'DELETE':
+            raise self.cleanup_error
         if self.fail_cleanup and request.method == 'DELETE':
             return Response(503, {})
         if request.method == 'DELETE':
@@ -59,7 +62,7 @@ class OwnedAPI:
 
 
 class CleanupTest(unittest.TestCase):
-    def exercise(self, lost_path, fail_cleanup=False, mutate_owner=False):
+    def exercise(self, lost_path, fail_cleanup=False, mutate_owner=False, cleanup_error=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             output = root / 'output'
@@ -70,10 +73,11 @@ class CleanupTest(unittest.TestCase):
             config.chmod(0o600)
             api = OwnedAPI(output / 'result.json', lost_path)
             api.fail_cleanup = fail_cleanup
+            api.cleanup_error = cleanup_error
             args = ['probe', str(config), str(output)]
             with patch('sys.argv', args), patch.object(harness.urllib.request, 'build_opener', return_value=api), \
                     contextlib.redirect_stdout(io.StringIO()):
-                with self.assertRaises(urllib.error.URLError):
+                with self.assertRaisesRegex(urllib.error.URLError, 'Synthetic lost create response'):
                     harness.main()
             state = json.loads(api.receipt.read_text())
             self.assertTrue(api.intent_observed_before_post)
@@ -81,19 +85,27 @@ class CleanupTest(unittest.TestCase):
             if fail_cleanup:
                 self.assertTrue(api.resources)
                 self.assertTrue(state['cleanup_errors'])
+                if cleanup_error is None:
+                    self.assertIn('Unexpected HTTP 503 DELETE', state['cleanup_errors'][0]['message'])
+                else:
+                    self.assertEqual(state['cleanup_errors'][0]['message'], 'Transport or response decoding failed')
+                    self.assertNotIn('synthetic-private-response', api.receipt.read_text())
                 api.fail_cleanup = False
+                api.cleanup_error = None
                 if mutate_owner:
                     next(iter(api.resources.values()))['name'] = 'unrelated'
                 with patch('sys.argv', args + ['--cleanup-only']), \
                         patch.object(harness.urllib.request, 'build_opener', return_value=api), \
                         contextlib.redirect_stdout(io.StringIO()):
                     if mutate_owner:
-                        with self.assertRaises(RuntimeError):
+                        with self.assertRaisesRegex(RuntimeError, 'Cleanup ownership mismatch'):
                             harness.main()
                     else:
                         harness.main()
                 state = json.loads(api.receipt.read_text())
                 self.assertEqual(state['cleanup'], not mutate_owner)
+                if mutate_owner:
+                    self.assertEqual(state['cleanup_errors'][0]['message'], 'Cleanup ownership mismatch')
             self.assertEqual(bool(api.resources), mutate_owner)
 
     def test_lost_user_create_response_is_reconciled(self):
@@ -107,6 +119,10 @@ class CleanupTest(unittest.TestCase):
 
     def test_changed_ownership_is_never_deleted(self):
         self.exercise('/users', fail_cleanup=True, mutate_owner=True)
+
+    def test_untrusted_cleanup_exception_text_is_not_persisted(self):
+        self.exercise('/users', fail_cleanup=True,
+                      cleanup_error=urllib.error.URLError('synthetic-private-response'))
 
 
 if __name__ == '__main__':

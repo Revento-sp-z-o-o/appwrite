@@ -12,9 +12,13 @@ import urllib.parse
 import urllib.request
 
 
+class QualificationError(RuntimeError):
+    """A diagnostic message authored here, without response bodies or secrets."""
+
+
 def require(condition, message):
     if not condition:
-        raise RuntimeError(message)
+        raise QualificationError(message)
 
 
 def main():
@@ -102,6 +106,7 @@ def main():
 
 
     def cleanup():
+        failures = []
         report['cleanup_errors'] = []
         for item in reversed(report['intents']):
             try:
@@ -123,11 +128,15 @@ def main():
                     call('GET', item['path'], allowed=(404,))
                 item['absent_verified'] = True
             except Exception as error:
-                report['cleanup_errors'].append({'path': item['path'], 'error': type(error).__name__})
+                message = str(error) if isinstance(error, QualificationError) else 'Transport or response decoding failed'
+                failures.append(QualificationError(message))
+                report['cleanup_errors'].append({'path': item['path'], 'error': type(error).__name__,
+                                                 'message': message})
             save()
         report['cleanup'] = not report['cleanup_errors']
         report['cleanup_scope'] = 'API absence verified; internal asynchronous database storage reclamation not attested'
         save()
+        return failures
 
 
     if args.cleanup_only:
@@ -136,8 +145,9 @@ def main():
         require(re.fullmatch(r'qprefix_[0-9a-f]{12}', identity) is not None
                 and report['project'] == config['project'] and report['endpoint'] == config['endpoint'],
                 'Cleanup receipt target mismatch')
-        cleanup()
-        require(report['cleanup'], 'Cleanup pending; rerun --cleanup-only with the same receipt')
+        failures = cleanup()
+        if failures:
+            raise failures[0]
         return
 
     try:
