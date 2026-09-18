@@ -9,7 +9,7 @@ production release.
 
 | Patch | Reason | Status |
 | --- | --- | --- |
-| `postgres-explicit-prefix` | Literal single-word prefixes on PostgreSQL (ENG-2114), including stopword/stem prefixes. | Native and packaged 62-case controls and isolated 46-case API matrix pass; routed Events acceptance pending. |
+| `postgres-explicit-prefix` | Literal single-word prefixes on PostgreSQL (ENG-2114), including stopword/stem prefixes. | Native and packaged 62-case controls, isolated 46-case API matrix and three routed Events cases pass. |
 | `synchronous-timeout` | Operator-configurable synchronous execution-API wait deadline (ENG-2093); default 30 seconds. | Isolated real-API profiles passed; see the sanitized deadline receipts. |
 | `http-native-curl` | Let executor HTTP waits yield to function callbacks in the API process. | Existing qualification environment correction; retained in this image. |
 | `relationship-lookups` | Defer unused collection metadata; opt in to direct relationship IDs for locked old-row reads (ENG-2084); invalidate document cache keys after the outer transaction finishes (ENG-2091). | Native and local API comparison passed; dev2 publication acceptance pending. |
@@ -299,6 +299,6 @@ rolled back in finally. CI runs this against the packaged images.
 This patch changes no index DDL or database-wide text-search setting. It establishes
 query correctness, not scalable indexed search: the pinned adapter creates a raw
 attribute index for fulltext metadata, not a prefix-search index. The regex branch makes no index-use claim.
-The isolated Appwrite API actor/endpoint matrix passes; the unchanged ENG-2002
-Events tests remain a routed deployment gate. See [qualification evidence](qualification/ENG-2114-prefix.md). Index lifecycle and representative query-plan/performance
+The isolated Appwrite API actor/endpoint matrix and unchanged three-case ENG-2002
+Events selection both pass on synthetic dev2. See [qualification evidence](qualification/ENG-2114-prefix.md). Index lifecycle and representative query-plan/performance
 qualification remain separate work before claiming production search readiness.

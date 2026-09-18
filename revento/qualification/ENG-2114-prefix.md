@@ -29,8 +29,10 @@ text-search setting, API permissions or SDK versions.
   IDs were verified absent through the API and the temporary API container was
   removed. Internal asynchronous storage reclamation is not attested by a 404 response.
   The routed baseline API container ID remained unchanged and running.
-- Four no-network cleanup fault tests pass: lost user creation response, lost
-  database creation response, failed deletion/retry, and ownership mismatch.
+- Five no-network cleanup fault tests pass: lost user creation response, lost
+  database creation response, failed deletion/retry, ownership mismatch and
+  untrusted exception-text redaction. Cleanup retry preserves actionable locally
+  authored diagnostics while the normal cleanup path preserves the primary error.
   Unsafe-target tests reject non-loopback/production targets and public config
   permissions under both normal and optimized Python execution.
 - Independent source security and pattern reviews have no outstanding blockers.
@@ -45,9 +47,17 @@ required with the packaged configuration.
 ## Remaining deployment gates and limitations
 
 This is candidate correctness/permission evidence, not a production release.
-The running dev2 API has not yet been replaced with this image. After a controlled
-rollout, run the unchanged ENG-2002 Events selection, including its later privacy,
-reconciliation and idempotence assertions. Keep the prefix query unchanged.
+The image was activated on synthetic dev2 at 19:10:45 UTC. All nine live source
+hashes and the preserved 90-second execution deadline were verified; all other
+services remained unchanged. The unchanged three-case ENG-2002 Events selection
+then passed in 18 seconds, including the prefix query and later privacy,
+reconciliation and idempotence assertions. Its eleven function deployments,
+settings and stored secret values were restored and verified at 19:19:22 UTC.
+
+These API and application acceptance runs were executed separately from CI.
+CI runs the packaged adapter and offline guard/cleanup controls. Automating the
+owned API bootstrap and original/candidate differential is tracked in
+[ENG-2118](https://linear.app/revento/issue/ENG-2118).
 
 No prefix index lifecycle or production-scale throughput claim is made. The
 pinned adapter's fulltext metadata uses a raw attribute index, and this patch
