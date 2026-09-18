@@ -89,7 +89,7 @@ jobs:
             baseline=()
             if [ "$variant" = candidate ]; then baseline=(--baseline=/results/original.json); fi
             status=0
-            docker run --rm --network host --entrypoint php \
+            docker run --rm --network host --user "$(id -u):$(id -g)" --entrypoint php \
               --mount "type=bind,source=$GITHUB_WORKSPACE/revento,target=/qualification,readonly" \
               --mount "type=bind,source=$GITHUB_WORKSPACE/prefix-results,target=/results" \
               -e 'ENG2114_PREFIX_PG_DSN=pgsql:host=127.0.0.1;port=5432;dbname=eng2114_prefix_ci' \
