@@ -113,6 +113,9 @@ jobs:
           assert before['temporary_transaction_rolled_back'] and after['temporary_transaction_rolled_back']
           PYCODE
 
+      # This isolates event-read behavior on the same hash-pinned patched
+      # Database.php. "original" means baseline individual event reads, not
+      # the upstream image (which fails the harness's dependency hash guard).
       - name: Qualify bounded transaction event reads
         run: |
           set -euo pipefail
