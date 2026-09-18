@@ -2,7 +2,7 @@ name: Revento patch qualification
 
 on:
   pull_request:
-    branches: [revento/2.0-maintenance, revento/relationship-lookup-candidate]
+    branches: [revento/2.0-maintenance, revento/relationship-lookup-candidate, revento/sync-timeout]
     paths: [revento/**, docker-compose.yml, .github/workflows/revento-qualification.yml]
   workflow_dispatch:
 
@@ -38,6 +38,8 @@ jobs:
         run: python3 revento/tests/test_qualification_guards.py -v
       - name: Verify deadline qualification cleanup recovery
         run: python3 revento/tests/test_eng2093_cleanup.py -v
+      - name: Verify prefix qualification cleanup recovery
+        run: python3 revento/tests/test_eng2114_cleanup.py -v
       - name: Verify maintained Compose environment forwarding
         run: python3 revento/tests/eng2082-compose.py
       - name: Build pinned candidate
@@ -73,6 +75,47 @@ jobs:
               assert after['metrics']['cache_loads'] < before['metrics']['cache_loads']
           PY
 
+      - name: Qualify explicit PostgreSQL prefixes and unchanged search controls
+        env:
+          UPSTREAM_IMAGE: appwrite/appwrite@sha256:27ca3f70d06fb0f4751e93cba03c49f96562236986f9b688185ee1c0e1f7e9aa
+        run: |
+          set -euo pipefail
+          mkdir prefix-results
+          docker run --rm --network host --entrypoint php revento/appwrite:qualification -r \
+            '(new PDO("pgsql:host=127.0.0.1;port=5432;dbname=relation_probe", "relation_probe", "synthetic-ci-only"))->exec("CREATE DATABASE eng2114_prefix_ci");'
+          for variant in original candidate; do
+            image="$UPSTREAM_IMAGE"
+            if [ "$variant" = candidate ]; then image=revento/appwrite:qualification; fi
+            baseline=()
+            if [ "$variant" = candidate ]; then baseline=(--baseline=/results/original.json); fi
+            status=0
+            docker run --rm --network host --user "$(id -u):$(id -g)" --entrypoint php \
+              --mount "type=bind,source=$GITHUB_WORKSPACE/revento,target=/qualification,readonly" \
+              --mount "type=bind,source=$GITHUB_WORKSPACE/prefix-results,target=/results" \
+              -e 'ENG2114_PREFIX_PG_DSN=pgsql:host=127.0.0.1;port=5432;dbname=eng2114_prefix_ci' \
+              -e ENG2114_PREFIX_PG_USER=relation_probe \
+              -e ENG2114_PREFIX_PG_PASSWORD=synthetic-ci-only \
+              "$image" /qualification/tests/eng2114-prefix.php --execute-local \
+              "--variant=$variant" --group=all \
+              --autoload=/usr/src/code/vendor/autoload.php \
+              --adapter-source=/usr/src/code/vendor/utopia-php/database/src/Database/Adapter/Postgres.php \
+              "--output=/results/$variant.json" "${baseline[@]}" || status=$?
+            if [ "$variant" = original ]; then test "$status" -eq 1; else test "$status" -eq 0; fi
+          done
+          python3 - <<'PYCODE'
+          import json
+          before = json.load(open('prefix-results/original.json'))
+          after = json.load(open('prefix-results/candidate.json'))
+          assert not before['passed'] and 'three_character_prefix' in before['failures']
+          assert after['passed'] and not after['failures']
+          assert len(before['checks']) == len(after['checks']) == 62
+          assert before['controls'] == after['controls']
+          assert before['temporary_transaction_rolled_back'] and after['temporary_transaction_rolled_back']
+          PYCODE
+
+      # This isolates event-read behavior on the same hash-pinned patched
+      # Database.php. "original" means baseline individual event reads, not
+      # the upstream image (which fails the harness's dependency hash guard).
       - name: Qualify bounded transaction event reads
         run: |
           set -euo pipefail

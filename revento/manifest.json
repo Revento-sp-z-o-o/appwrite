@@ -72,6 +72,14 @@
       "before_sha256": "8f5e380dc824a7ce12b25566491ec118750539b967ef80554e12e59c0e076d6c",
       "after_sha256": "08520c1e8f7a3a7b6e934651869c31199d468b8436a489b3c3563896afa35f75",
       "patch_sha256": "e2b456a6963667cae4118c89e588f275fd24badf8593b46df035bd448b4c5bff"
+    },
+    {
+      "name": "postgres-explicit-prefix",
+      "file": "postgres-explicit-prefix.patch",
+      "target": "vendor/utopia-php/database/src/Database/Adapter/Postgres.php",
+      "before_sha256": "3dbdd795a36b5783120d0e9b2f6e8ad498f0261901d67656c4e900ce60b45045",
+      "after_sha256": "f7d2a341e851ec22397618277e224b6fb937f32eaeedc1c7df438e3ca0a71f86",
+      "patch_sha256": "6f3b11d71ddb261d781b7ca82d76b1d4fa4b3bd12ab9df4d8d93cd95579cdc16"
     }
   ]
 }

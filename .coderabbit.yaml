@@ -8,6 +8,7 @@ reviews:
     base_branches:
       - 'revento/2\.0-maintenance'
       - 'revento/relationship-lookup-candidate'
+      - 'revento/sync-timeout'
       - main
       - 1.6.x
       - 1.7.x
