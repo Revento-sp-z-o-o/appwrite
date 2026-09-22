@@ -1,0 +1,18 @@
+--- a/app/config/variables.php
++++ b/app/config/variables.php
+@@ -698,6 +698,15 @@
+                 'filter' => ''
+             ],
+             [
++                'name' => '_APP_LIMIT_DATABASE_TRANSACTION',
++                'description' => 'Maximum cumulative staged operations in one self-hosted database transaction. Raising it increases work and resource use per commit; qualify the intended workload. Default value is: 100.',
++                'introduction' => '2.0.0',
++                'default' => '100',
++                'required' => false,
++                'question' => '',
++                'filter' => ''
++            ],
++            [
+                 'name' => '_APP_DOCUMENTSDB',
+                 'description' => 'Enables the DocumentsDB API, which runs on MongoDB. The installer does not deploy MongoDB, so provision one and point the _APP_DB_*_DOCUMENTSDB variables at it before enabling this; until then the /v1/documentsdb routes return a service disabled error. Default value is: disabled.',
+                 'introduction' => '2.0.0',

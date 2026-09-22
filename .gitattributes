@@ -7,3 +7,6 @@ public/scripts/** linguist-detectable=false
 public/dist/scripts/** linguist-detectable=false
 
 .github/workflows/*.lock.yml linguist-generated=true merge=ours
+
+# Unified-diff context lines intentionally contain a single leading space.
+revento/patches/*.patch -whitespace

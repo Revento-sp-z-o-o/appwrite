@@ -1,0 +1,69 @@
+{
+  "upstream_appwrite": {
+    "tag": "2.0.0",
+    "commit": "033c6303e352b9307f0e53fff15fb631882674d6",
+    "image": "appwrite/appwrite@sha256:27ca3f70d06fb0f4751e93cba03c49f96562236986f9b688185ee1c0e1f7e9aa"
+  },
+  "upstream_database": {
+    "version": "7.3.4",
+    "commit": "debef429479c86d8b5610a32e390651855131e7d"
+  },
+  "patches": [
+    {
+      "name": "http-native-curl",
+      "file": "http-native-curl.patch",
+      "target": "app/http.php",
+      "before_sha256": "40d1aea04fcbc60305e0e448be4a62f8836a078011fe720a1226869b4d8c5f38",
+      "after_sha256": "573e5481a81667643195a65ee00d17d1866aff78fc336388c1e5c78ec9927a05",
+      "patch_sha256": "d6d9ab1f2f9e5964ec3df660c73d675c7d1f7626a88902a1fc56b773edeab888"
+    },
+    {
+      "name": "relationship-lookups",
+      "file": "relationship-lookups.patch",
+      "target": "vendor/utopia-php/database/src/Database/Database.php",
+      "before_sha256": "ade0f0a598547f31993b53656cfdc8758a729191953003fddfb4152194360a46",
+      "after_sha256": "dc0331589fc765cc1c7dca0ee68a7e9cf75e782a896be1b7a511b9f66da3eb9b",
+      "patch_sha256": "ad3a4bd478a818b5520bd1309ed1531b39320ccc21c542f781a9d1b372823354"
+    },
+    {
+      "name": "transaction-limit",
+      "file": "transaction-limit.patch",
+      "target": "app/init/constants.php",
+      "before_sha256": "b1a99bde0a647f5178dad25557ce588fecef10cd2a5e1832488ca99f2e7f78e6",
+      "after_sha256": "a3029d0e62b49256840666c008ba662e381e4c2446ef864cb1fc0ba0bd71f8a9",
+      "patch_sha256": "c5f252c1803153e1d751c0641bbebb6a598962f68cc72cca9afb037fa62409e6"
+    },
+    {
+      "name": "transaction-event-documents",
+      "file": "transaction-event-documents.patch",
+      "target": "src/Appwrite/Databases/TransactionState.php",
+      "before_sha256": "0f80cc85a4f023a8d15aba19fe126ff66e56754dd0c1b15ef8ba7df00e01e0f3",
+      "after_sha256": "2213067ab39435f0c3ec20d903f35102a26d93585e780cb4f87b1e5c79800b45",
+      "patch_sha256": "24cae1da7a601ccfbb7c05427d359dd813727b30e423f6cc250ca65f2e8ae15f"
+    },
+    {
+      "name": "transaction-event-reads",
+      "file": "transaction-event-reads.patch",
+      "target": "src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Update.php",
+      "before_sha256": "d7f7879e94e4ea7e08e8ad5e97af39d5354f415f7ce3495d86608a4835a626a2",
+      "after_sha256": "a1f2a98176385d1304a02f9cbf081f9ff6693a523f0c7af3ceabddf46248f8e7",
+      "patch_sha256": "fcbcd81397b50c0879922834f6e1431d1216fd8698333667483ea7b8e4636fb3"
+    },
+    {
+      "name": "transaction-staging-reads",
+      "file": "transaction-staging-reads.patch",
+      "target": "src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Operations/Create.php",
+      "before_sha256": "46b4b125ae85d8e6aaaeb5188f3355f398385d86601a00f0c596808f1aff77c3",
+      "after_sha256": "f285d86dfd8f3bd7fc2e8f1a3f13ea4c043cea4cb55a8fb114c90ab4e319e4fa",
+      "patch_sha256": "590394a7fd02b812aecc7f1f257775248c5cb5ccfe06d0193b64fc2f5b577dd6"
+    },
+    {
+      "name": "operator-variables",
+      "file": "operator-variables.patch",
+      "target": "app/config/variables.php",
+      "before_sha256": "3ee482414ca0a2713e984b162f7c4224430f9e473c48a5a17e9fc053b42f6433",
+      "after_sha256": "7d7860b185eb8a6791597fe9b8400861dec58911ccb91057747a93b12f943f4c",
+      "patch_sha256": "465bdd46d3e1c6aca8065e14d18e26fd126f883fef6c9722d92f3cebc7adc9f1"
+    }
+  ]
+}
