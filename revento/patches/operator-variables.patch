@@ -16,3 +16,19 @@
                  'name' => '_APP_DOCUMENTSDB',
                  'description' => 'Enables the DocumentsDB API, which runs on MongoDB. The installer does not deploy MongoDB, so provision one and point the _APP_DB_*_DOCUMENTSDB variables at it before enabling this; until then the /v1/documentsdb routes return a service disabled error. Default value is: disabled.',
                  'introduction' => '2.0.0',
+@@ -1145,6 +1154,15 @@
+                 'description' => 'The maximum size of a built deployment in bytes. The default value is 2,000,000,000 (2GB), and the maximum value is 4,294,967,295 (4.2GB).',
+                 'introduction' => '1.6.0',
+                 'default' => '2000000000',
++                'required' => false,
++                'question' => '',
++                'filter' => ''
++            ],
++            [
++                'name' => '_APP_FUNCTIONS_SYNC_TIMEOUT',
++                'description' => 'Wait limit for POST /v1/functions/{functionId}/executions with async:false, in seconds. Does not affect direct function domains or Sites. Integer 1 through 900; invalid values fall back to 30. Function runtime and caller timeouts remain independent. Default value is: 30.',
++                'introduction' => '2.0.0',
++                'default' => '30',
+                 'required' => false,
+                 'question' => '',
+                 'filter' => ''
