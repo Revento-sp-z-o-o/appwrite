@@ -203,6 +203,7 @@ services:
       - _APP_EXECUTOR_HOST
       - _APP_BUILDS_VOLUME
       - _APP_JOBS_HOST
+      - _APP_JOBS_TIMEOUT
       - _APP_JOBS_SECRET
       - _APP_JOBS_ENDPOINT
       - _APP_LOGGING_CONFIG
@@ -504,6 +505,7 @@ services:
       - _APP_VCS_WEBHOOK_URL
       - _APP_BUILDS_VOLUME
       - _APP_JOBS_HOST
+      - _APP_JOBS_TIMEOUT
       - _APP_JOBS_SECRET
       - _APP_JOBS_ENDPOINT
       - _APP_BROWSER_HOST
@@ -892,6 +894,7 @@ services:
       - _APP_DOMAIN_SITES
       - _APP_BUILDS_VOLUME
       - _APP_JOBS_HOST
+      - _APP_JOBS_TIMEOUT
       - _APP_JOBS_SECRET
       - _APP_JOBS_ENDPOINT
     extra_hosts:
@@ -945,6 +948,7 @@ services:
       - _APP_STORAGE_WASABI_REGION
       - _APP_STORAGE_WASABI_BUCKET
       - _APP_JOBS_HOST
+      - _APP_JOBS_TIMEOUT
       - _APP_JOBS_SECRET
       - _APP_REDIS_HOST
       - _APP_REDIS_PORT

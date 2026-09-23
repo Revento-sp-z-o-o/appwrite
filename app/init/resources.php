@@ -83,9 +83,12 @@ $container->set('localeCodes', fn () => array_map(fn ($locale) => $locale['code'
 $container->set('executor', fn () => new Executor(), []);
 
 $container->set('jobs', function () {
+    // Docker may need longer than 30 seconds to create a build container on a
+    // busy self-hosted node. Keep the upstream default unless configured.
+    $timeout = max(30, min(300, (int) System::getEnv('_APP_JOBS_TIMEOUT', 30)));
     $client = (new Client(new CurlAdapter()))
         ->withBearerAuth(System::getEnv('_APP_JOBS_SECRET', ''))
-        ->withTimeout(30);
+        ->withTimeout($timeout);
 
     // Keep the injection resolvable without _APP_JOBS_HOST and fail at call
     // time instead, so installs that never build stay bootable.
