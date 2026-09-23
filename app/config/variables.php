@@ -1287,6 +1287,15 @@ return [
                 'filter' => ''
             ],
             [
+                'name' => '_APP_JOBS_TIMEOUT',
+                'description' => 'HTTP request deadline, in seconds, for Appwrite calls to the jobs-service. Values are bounded to 30–300 seconds; increase it if Docker container creation exceeds the 30-second default during builds.',
+                'introduction' => '2.0.0',
+                'default' => '30',
+                'required' => false,
+                'question' => '',
+                'filter' => ''
+            ],
+            [
                 'name' => '_APP_JOBS_SECRET',
                 'description' => 'The secret used to authenticate with the jobs-service and to sign/verify job callback (HMAC) requests. Make sure to change this.',
                 'introduction' => '1.9.0',
