@@ -155,6 +155,19 @@ class Migrations extends Action
             throw new \Exception('Project not found');
         }
 
+        // A redelivered queue message contains the original migration snapshot.
+        // Read the persisted stage before deciding whether to replay the transfer.
+        $current = $authorization->skip(fn () => $dbForProject->getDocument('migrations', $migration->getId()));
+        if ($current->isEmpty()) {
+            throw new \Exception('Migration not found');
+        }
+        if ($current->getAttribute('status') === 'completed') {
+            return;
+        }
+        if ($current->getAttribute('stage') === 'preserving_accounts') {
+            $migration = $current;
+        }
+
         $this->dbForProject = $dbForProject;
         $this->dbForPlatform = $dbForPlatform;
         $this->project = $project;
@@ -764,10 +777,6 @@ class Migrations extends Action
                         }
                         $target = $authorization->skip(fn () => $this->dbForProject->getDocument('users', $user->id));
                         if ($target->isEmpty()) {
-                            if ($transfer === null) {
-                                $cursor = $user->id;
-                                continue;
-                            }
                             throw new \RuntimeException('Imported user is missing during metadata preservation');
                         }
                         $authorization->skip(fn () => $this->dbForProject->updateDocument('users', $user->id, new Document([
@@ -779,6 +788,7 @@ class Migrations extends Action
                             'hashOptions' => $user->hashOptions,
                             'emailIsCanonical' => $user->emailIsCanonical,
                         ])));
+                        unset($imported[Resource::TYPE_USER][$user->id]);
                         $cursor = $user->id;
                     }
                 } while (count($page) === 100);
@@ -812,10 +822,6 @@ class Migrations extends Action
                                         Query::equal('userId', [$membership->userId]),
                                     ]));
                                     if ($target->isEmpty()) {
-                                        if ($transfer === null) {
-                                            $membershipCursor = $membership->id;
-                                            continue;
-                                        }
                                         throw new \RuntimeException('Imported membership is missing during metadata preservation');
                                     }
                                     $authorization->skip(fn () => $this->dbForProject->withTransaction(function () use ($target, $team, $membership) {
@@ -834,6 +840,7 @@ class Migrations extends Action
                                         }
                                     }));
                                     $authorization->skip(fn () => $this->dbForProject->purgeCachedDocument('users', $membership->userId));
+                                    unset($imported[Resource::TYPE_MEMBERSHIP][$membership->id]);
                                     $membershipCursor = $membership->id;
                                 }
                             } while (count($memberships) === 100);
@@ -843,19 +850,21 @@ class Migrations extends Action
                             && ($transfer === null || isset($imported[Resource::TYPE_TEAM][$team->id]))) {
                             $target = $authorization->skip(fn () => $this->dbForProject->getDocument('teams', $team->id));
                             if ($target->isEmpty()) {
-                                if ($transfer !== null) {
-                                    throw new \RuntimeException('Imported team is missing during metadata preservation');
-                                }
-                            } else {
-                                $authorization->skip(fn () => $this->dbForProject->updateDocument('teams', $team->id, new Document([
-                                    '$createdAt' => $team->createdAt,
-                                    '$updatedAt' => $team->updatedAt,
-                                ])));
+                                throw new \RuntimeException('Imported team is missing during metadata preservation');
                             }
+                            $authorization->skip(fn () => $this->dbForProject->updateDocument('teams', $team->id, new Document([
+                                '$createdAt' => $team->createdAt,
+                                '$updatedAt' => $team->updatedAt,
+                            ])));
+                            unset($imported[Resource::TYPE_TEAM][$team->id]);
                         }
                         $cursor = $team->id;
                     }
                 } while (count($page) === 100);
+            }
+
+            if ($transfer !== null && array_filter($imported)) {
+                throw new \RuntimeException('An imported account disappeared from the source during metadata preservation');
             }
         } finally {
             $this->dbForProject->setPreserveDates($preserveDates);
