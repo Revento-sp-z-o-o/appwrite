@@ -495,6 +495,7 @@ trait MigrationsBase
         foreach (['$createdAt', '$updatedAt'] as $field) {
             $this->assertSame($sourceTeam['body'][$field], $response['body'][$field], $field . ' must survive team migration');
         }
+        $this->assertSame($sourceTeam['body']['total'], $response['body']['total']);
 
         $response = $this->client->call(Client::METHOD_GET, '/teams/' . $team['body']['$id'] . '/memberships', [
             'content-type' => 'application/json',
