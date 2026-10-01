@@ -261,14 +261,14 @@ trait MigrationsBase
      */
     public function testAppwriteMigrationAuthUserPassword(): void
     {
-        $response = $this->client->call(Client::METHOD_POST, '/users', [
+        $response = $this->client->call(Client::METHOD_POST, '/users/argon2', [
             'content-type' => 'application/json',
             'x-appwrite-project' => $this->getProject()['$id'],
             'x-appwrite-key' => $this->getProject()['apiKey'],
         ], [
             'userId' => ID::unique(),
             'email' => 'test@test.com',
-            'password' => 'password',
+            'password' => '$argon2i$v=19$m=20,t=3,p=2$YXBwd3JpdGU$A/54i238ed09ZR4NwlACU5XnkjNBZU9QeOEuhjLiexI',
         ]);
 
         $this->assertEquals(201, $response['headers']['status-code']);
@@ -307,6 +307,19 @@ trait MigrationsBase
         $this->assertNotEmpty($response['body']['$id']);
         $this->assertEquals($user['email'], $response['body']['email']);
         $this->assertEquals($user['password'], $response['body']['password']);
+        foreach (['$createdAt', '$updatedAt', 'registration', 'passwordUpdate',
+            'accessedAt', 'hashOptions', 'emailIsCanonical'] as $field) {
+            $this->assertSame($user[$field], $response['body'][$field], $field . ' must survive account migration');
+        }
+
+        $login = $this->client->call(Client::METHOD_POST, '/account/sessions/email', [
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getDestinationProject()['$id'],
+        ], [
+            'email' => $user['email'],
+            'password' => 'appwrite',
+        ]);
+        $this->assertEquals(201, $login['headers']['status-code']);
 
         // Cleanup
         $this->client->call(Client::METHOD_DELETE, '/users/' . $user['$id'], [
@@ -426,6 +439,14 @@ trait MigrationsBase
         $this->assertEquals(201, $membership['headers']['status-code']);
         $this->assertNotEmpty($membership['body']);
         $this->assertNotEmpty($membership['body']['$id']);
+        $sourceMembership = $membership['body'];
+
+        $sourceTeam = $this->client->call(Client::METHOD_GET, '/teams/' . $team['body']['$id'], [
+            'content-type' => 'application/json',
+            'x-appwrite-project' => $this->getProject()['$id'],
+            'x-appwrite-key' => $this->getProject()['apiKey'],
+        ]);
+        $this->assertEquals(200, $sourceTeam['headers']['status-code']);
 
         $result = $this->performMigrationSync([
             'resources' => [
@@ -471,6 +492,10 @@ trait MigrationsBase
         $this->assertNotEmpty($response['body']);
         $this->assertNotEmpty($response['body']['$id']);
         $this->assertEquals($team['body']['name'], $response['body']['name']);
+        foreach (['$createdAt', '$updatedAt'] as $field) {
+            $this->assertSame($sourceTeam['body'][$field], $response['body'][$field], $field . ' must survive team migration');
+        }
+        $this->assertSame($sourceTeam['body']['total'], $response['body']['total']);
 
         $response = $this->client->call(Client::METHOD_GET, '/teams/' . $team['body']['$id'] . '/memberships', [
             'content-type' => 'application/json',
@@ -486,6 +511,9 @@ trait MigrationsBase
         $this->assertEquals($user['body']['$id'], $membership['userId']);
         $this->assertEquals($team['body']['$id'], $membership['teamId']);
         $this->assertEquals(['owner'], $membership['roles']);
+        foreach (['$createdAt', '$updatedAt', 'invited', 'joined', 'confirm'] as $field) {
+            $this->assertSame($sourceMembership[$field], $membership[$field], $field . ' must survive membership migration');
+        }
 
         // Cleanup
         $this->client->call(Client::METHOD_DELETE, '/teams/' . $team['body']['$id'], [

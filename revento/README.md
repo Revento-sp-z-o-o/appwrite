@@ -18,6 +18,8 @@ production release.
 | `transaction-event-documents` | Bounded final event reads (ENG-2083), identity/permission staging reads (ENG-2084). | Native and local API acceptance passed. |
 | `transaction-event-reads` | Bounded final events and guarded old-row reads for PostgreSQL transaction updates. | Only declared internal read changes; event dispatch and rollback boundaries verified. |
 | `transaction-staging-reads` | Use narrow staging reads through legacy/TablesDB operations routes (ENG-2084). | Local API staging and 150-row wiring comparison passed. |
+| `account-metadata-worker` | Restore account metadata after Appwrite-to-Appwrite import, with retryable repair and pending-member count/cache correction. | Pinned patch proof passed; disposable API qualification pending. |
+| `account-metadata-stage` | Describe the account-preservation retry stage in migration responses. | Pinned patch proof passed. |
 
 The database patch changes Utopia's dependency code, not Revento functions or SDKs.
 It keeps relationship traversal, write-side inverse maintenance, authorization,
@@ -79,6 +81,8 @@ Compose service definition before recreating containers; editing `.env` alone do
 not add missing entries to an older Compose file. Use the qualified maintained
 image digest for the API service. Upstream PHP source files in this repository remain
 pristine; the patch manifest defines the packaged PHP changes.
+Run the account-migration assertions in `tests/e2e` against the patched
+candidate image; the unpatched repository PHP is not that runtime.
 
 The setting follows the existing `_APP_LIMIT_DATABASE_BATCH` parsing convention:
 the shared environment reader treats an unset, empty or `0` value as the default
