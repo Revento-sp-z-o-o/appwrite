@@ -1,0 +1,244 @@
+diff --git a/src/Appwrite/Platform/Workers/Migrations.php b/src/Appwrite/Platform/Workers/Migrations.php
+index d4d259d7d7..579743e47b 100644
+--- a/src/Appwrite/Platform/Workers/Migrations.php
++++ b/src/Appwrite/Platform/Workers/Migrations.php
+@@ -3,12 +3,16 @@
+ namespace Appwrite\Platform\Workers;
+ 
+ use Ahc\Jwt\JWT;
++use Appwrite\Client as AppwriteClient;
+ use Appwrite\Event\Message\Mail as MailMessage;
+ use Appwrite\Event\Message\Migration;
+ use Appwrite\Event\Publisher\Mail as MailPublisher;
+ use Appwrite\Event\Publisher\Usage as UsagePublisher;
+ use Appwrite\Event\Realtime;
+ use Appwrite\Extend\Exception;
++use Appwrite\Query as AppwriteQuery;
++use Appwrite\Services\Teams as AppwriteTeams;
++use Appwrite\Services\Users as AppwriteUsers;
+ use Appwrite\Template\Template;
+ use Appwrite\Usage\Context;
+ use Utopia\Compression\Compression;
+@@ -151,6 +155,19 @@ class Migrations extends Action
+             throw new \Exception('Project not found');
+         }
+ 
++        // A redelivered queue message contains the original migration snapshot.
++        // Read the persisted stage before deciding whether to replay the transfer.
++        $current = $authorization->skip(fn () => $dbForProject->getDocument('migrations', $migration->getId()));
++        if ($current->isEmpty()) {
++            throw new \Exception('Migration not found');
++        }
++        if ($current->getAttribute('status') === 'completed') {
++            return;
++        }
++        if ($current->getAttribute('stage') === 'preserving_accounts') {
++            $migration = $current;
++        }
++
+         $this->dbForProject = $dbForProject;
+         $this->dbForPlatform = $dbForPlatform;
+         $this->project = $project;
+@@ -497,6 +514,14 @@ class Migrations extends Action
+         $caughtError = null;
+ 
+         try {
++            if ($migration->getAttribute('stage') === 'preserving_accounts'
++                && $this->shouldPreserveAccountMetadata($migration)) {
++                $this->preserveAccountMetadata($migration, $authorization);
++                $migration->setAttribute('status', 'completed');
++                $migration->setAttribute('stage', 'finished');
++                return;
++            }
++
+             $host = System::getEnv('_APP_MIGRATION_HOST');
+             if (empty($host)) {
+                 throw new \Exception('_APP_MIGRATION_HOST is not set');
+@@ -568,6 +593,12 @@ class Migrations extends Action
+             $destination->success();
+             $source->success();
+ 
++            if ($this->shouldPreserveAccountMetadata($migration)) {
++                $migration->setAttribute('stage', 'preserving_accounts');
++                $this->updateMigrationDocument($migration, $project, $queueForRealtime);
++                $this->preserveAccountMetadata($migration, $authorization, $transfer);
++            }
++
+             $destinationType = $migration->getAttribute('destination');
+             if ($destinationType === DestinationCSV::getName() || $destinationType === DestinationJSON::getName()) {
+                 $this->handleDataExportComplete($project, $migration, $publisherForMails, $queueForRealtime, $platform, $authorization);
+@@ -582,7 +613,9 @@ class Migrations extends Action
+             Console::error($th->getTraceAsString());
+ 
+             $migration->setAttribute('status', 'failed');
+-            $migration->setAttribute('stage', 'finished');
++            if ($migration->getAttribute('stage') !== 'preserving_accounts') {
++                $migration->setAttribute('stage', 'finished');
++            }
+ 
+             $caughtError = $th;
+ 
+@@ -681,6 +714,163 @@ class Migrations extends Action
+         }
+     }
+ 
++    /**
++     * The Appwrite-to-Appwrite transfer recreates accounts through public APIs, which
++     * reset their historical dates and a few user fields. Restore only those fields
++     * after a successful fail-on-duplicate import. A failure leaves the migration in
++     * this stage so Retry replays only this idempotent pass. The caller must fence
++     * source writes until the migration completes.
++     */
++    private function shouldPreserveAccountMetadata(Document $migration): bool
++    {
++        $resources = $migration->getAttribute('resources', []);
++        $context = $this->resolveResourceContext($migration);
++        return $migration->getAttribute('source') === SourceAppwrite::getName()
++            && $migration->getAttribute('destination') === DestinationAppwrite::getName()
++            && ($migration->getAttribute('options', [])['onDuplicate'] ?? 'fail') === 'fail'
++            && !array_filter($context)
++            && (bool) array_intersect($resources, [Resource::TYPE_USER, Resource::TYPE_TEAM, Resource::TYPE_MEMBERSHIP]);
++    }
++
++    private function preserveAccountMetadata(Document $migration, Authorization $authorization, ?Transfer $transfer = null): void
++    {
++        $resources = $migration->getAttribute('resources', []);
++        if (!$this->shouldPreserveAccountMetadata($migration)) {
++            return;
++        }
++
++        $imported = [];
++        if ($transfer !== null) {
++            foreach ([Resource::TYPE_USER, Resource::TYPE_TEAM, Resource::TYPE_MEMBERSHIP] as $type) {
++                foreach ($transfer->getCache()->get($type) as $resource) {
++                    if ($resource->getStatus() === Resource::STATUS_SUCCESS) {
++                        $imported[$type][$resource->getId()] = true;
++                    }
++                }
++            }
++        }
++
++        $credentials = $migration->getAttribute('credentials');
++        $client = new AppwriteClient();
++        $client->setEndpoint($credentials['endpoint'])
++            ->setProject($credentials['projectId'])
++            ->setKey($credentials['apiKey']);
++
++        $users = new AppwriteUsers($client);
++        $teams = new AppwriteTeams($client);
++        $preserveDates = $this->dbForProject->getPreserveDates();
++        $this->dbForProject->setPreserveDates(true);
++
++        try {
++            if (in_array(Resource::TYPE_USER, $resources, true)) {
++                $cursor = null;
++                do {
++                    $queries = [AppwriteQuery::limit(100)];
++                    if ($cursor !== null) {
++                        $queries[] = AppwriteQuery::cursorAfter($cursor);
++                    }
++                    $page = $users->list($queries, total: false)->users;
++                    foreach ($page as $user) {
++                        if ($transfer !== null && !isset($imported[Resource::TYPE_USER][$user->id])) {
++                            $cursor = $user->id;
++                            continue;
++                        }
++                        $target = $authorization->skip(fn () => $this->dbForProject->getDocument('users', $user->id));
++                        if ($target->isEmpty()) {
++                            throw new \RuntimeException('Imported user is missing during metadata preservation');
++                        }
++                        $authorization->skip(fn () => $this->dbForProject->updateDocument('users', $user->id, new Document([
++                            '$createdAt' => $user->createdAt,
++                            '$updatedAt' => $user->updatedAt,
++                            'registration' => $user->registration,
++                            'passwordUpdate' => $user->passwordUpdate ?: null,
++                            'accessedAt' => $user->accessedAt ?: null,
++                            'hashOptions' => $user->hashOptions,
++                            'emailIsCanonical' => $user->emailIsCanonical,
++                        ])));
++                        unset($imported[Resource::TYPE_USER][$user->id]);
++                        $cursor = $user->id;
++                    }
++                } while (count($page) === 100);
++            }
++
++            if (in_array(Resource::TYPE_TEAM, $resources, true)
++                || in_array(Resource::TYPE_MEMBERSHIP, $resources, true)) {
++                $cursor = null;
++                do {
++                    $queries = [AppwriteQuery::limit(100)];
++                    if ($cursor !== null) {
++                        $queries[] = AppwriteQuery::cursorAfter($cursor);
++                    }
++                    $page = $teams->list($queries, total: false)->teams;
++                    foreach ($page as $team) {
++                        if (in_array(Resource::TYPE_MEMBERSHIP, $resources, true)) {
++                            $membershipCursor = null;
++                            do {
++                                $membershipQueries = [AppwriteQuery::limit(100)];
++                                if ($membershipCursor !== null) {
++                                    $membershipQueries[] = AppwriteQuery::cursorAfter($membershipCursor);
++                                }
++                                $memberships = $teams->listMemberships($team->id, $membershipQueries, total: false)->memberships;
++                                foreach ($memberships as $membership) {
++                                    if ($transfer !== null && !isset($imported[Resource::TYPE_MEMBERSHIP][$membership->id])) {
++                                        $membershipCursor = $membership->id;
++                                        continue;
++                                    }
++                                    $target = $authorization->skip(fn () => $this->dbForProject->findOne('memberships', [
++                                        Query::equal('teamId', [$team->id]),
++                                        Query::equal('userId', [$membership->userId]),
++                                    ]));
++                                    if ($target->isEmpty()) {
++                                        throw new \RuntimeException('Imported membership is missing during metadata preservation');
++                                    }
++                                    $authorization->skip(fn () => $this->dbForProject->withTransaction(function () use ($target, $team, $membership) {
++                                        $current = $this->dbForProject->getDocument('memberships', $target->getId(), forUpdate: true);
++                                        $this->dbForProject->updateDocument('memberships', $target->getId(), new Document([
++                                            '$createdAt' => $membership->createdAt,
++                                            '$updatedAt' => $membership->updatedAt,
++                                            'invited' => $membership->invited ?: null,
++                                            'joined' => $membership->joined ?: null,
++                                            'confirm' => $membership->confirm,
++                                        ]));
++                                        if ($current->getAttribute('confirm') && !$membership->confirm) {
++                                            $this->dbForProject->decreaseDocumentAttribute('teams', $team->id, 'total', 1, 0);
++                                        } elseif (!$current->getAttribute('confirm') && $membership->confirm) {
++                                            $this->dbForProject->increaseDocumentAttribute('teams', $team->id, 'total', 1);
++                                        }
++                                    }));
++                                    $authorization->skip(fn () => $this->dbForProject->purgeCachedDocument('users', $membership->userId));
++                                    unset($imported[Resource::TYPE_MEMBERSHIP][$membership->id]);
++                                    $membershipCursor = $membership->id;
++                                }
++                            } while (count($memberships) === 100);
++                        }
++
++                        if (in_array(Resource::TYPE_TEAM, $resources, true)
++                            && ($transfer === null || isset($imported[Resource::TYPE_TEAM][$team->id]))) {
++                            $target = $authorization->skip(fn () => $this->dbForProject->getDocument('teams', $team->id));
++                            if ($target->isEmpty()) {
++                                throw new \RuntimeException('Imported team is missing during metadata preservation');
++                            }
++                            $authorization->skip(fn () => $this->dbForProject->updateDocument('teams', $team->id, new Document([
++                                '$createdAt' => $team->createdAt,
++                                '$updatedAt' => $team->updatedAt,
++                            ])));
++                            unset($imported[Resource::TYPE_TEAM][$team->id]);
++                        }
++                        $cursor = $team->id;
++                    }
++                } while (count($page) === 100);
++            }
++
++            if ($transfer !== null && array_filter($imported)) {
++                throw new \RuntimeException('An imported account disappeared from the source during metadata preservation');
++            }
++        } finally {
++            $this->dbForProject->setPreserveDates($preserveDates);
++        }
++    }
++
+     protected function getDatabasesDBForProject(Document $database)
+     {
+         if (isset($this->sourceProject) && ! $this->sourceProject->isEmpty()) {

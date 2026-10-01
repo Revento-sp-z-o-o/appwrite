@@ -11,6 +11,8 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
     && php /tmp/revento/apply.php /usr/src/code \
     && php -l /usr/src/code/app/http.php \
     && php -l /usr/src/code/app/init/constants.php \
+    && php -l /usr/src/code/src/Appwrite/Platform/Workers/Migrations.php \
+    && php -l /usr/src/code/src/Appwrite/Utopia/Response/Model/Migration.php \
     && php -l /usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
     && php -l /usr/src/code/vendor/utopia-php/database/src/Database/Adapter/Postgres.php \
     && php /tmp/revento/tests/eng2114-word-class.php --check /usr/src/code/vendor/utopia-php/database/src/Database/Adapter/Postgres.php \

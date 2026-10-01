@@ -80,6 +80,22 @@
       "before_sha256": "3dbdd795a36b5783120d0e9b2f6e8ad498f0261901d67656c4e900ce60b45045",
       "after_sha256": "f7d2a341e851ec22397618277e224b6fb937f32eaeedc1c7df438e3ca0a71f86",
       "patch_sha256": "6f3b11d71ddb261d781b7ca82d76b1d4fa4b3bd12ab9df4d8d93cd95579cdc16"
+    },
+    {
+      "name": "account-metadata-worker",
+      "file": "account-metadata-worker.patch",
+      "target": "src/Appwrite/Platform/Workers/Migrations.php",
+      "before_sha256": "4ab9bafd6d432c58cd25fc75f021f9ddfb932142fad70b04edc3787bd4d78fc5",
+      "after_sha256": "b6729109a2bf7c26582c941222c0d418620fe51eeb709896ce40afdf3c1c47fe",
+      "patch_sha256": "117b536f85a02fd13dc686c0de5bef60abbdd8601c0eff56f4b2d373ab1e84b3"
+    },
+    {
+      "name": "account-metadata-stage",
+      "file": "account-metadata-stage.patch",
+      "target": "src/Appwrite/Utopia/Response/Model/Migration.php",
+      "before_sha256": "05fdc8ecadd707f78c0ef63e73801a2eb735af677a5029ed743d1ccad9844670",
+      "after_sha256": "e255816e9be445c0a3454a484fa84e8714c1829e01a64b5e840b8365450b76e8",
+      "patch_sha256": "fa6b33017e5ccd76058d919266bf69838d43559b39bc076a273885e629d02730"
     }
   ]
 }
