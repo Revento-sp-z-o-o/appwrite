@@ -3,12 +3,16 @@
 namespace Appwrite\Platform\Workers;
 
 use Ahc\Jwt\JWT;
+use Appwrite\Client as AppwriteClient;
 use Appwrite\Event\Message\Mail as MailMessage;
 use Appwrite\Event\Message\Migration;
 use Appwrite\Event\Publisher\Mail as MailPublisher;
 use Appwrite\Event\Publisher\Usage as UsagePublisher;
 use Appwrite\Event\Realtime;
 use Appwrite\Extend\Exception;
+use Appwrite\Query as AppwriteQuery;
+use Appwrite\Services\Teams as AppwriteTeams;
+use Appwrite\Services\Users as AppwriteUsers;
 use Appwrite\Template\Template;
 use Appwrite\Usage\Context;
 use Utopia\Compression\Compression;
@@ -554,6 +558,10 @@ class Migrations extends Action
 
                 $destination->shutdown();
                 $source->shutdown();
+
+                if (empty($source->getErrors()) && empty($destination->getErrors())) {
+                    $this->preserveAccountMetadata($migration, $authorization);
+                }
             }
 
             $sourceErrors = $source->getErrors();
@@ -678,6 +686,119 @@ class Migrations extends Action
                 $source = null;
                 $destination = null;
             }
+        }
+    }
+
+    /**
+     * The Appwrite-to-Appwrite transfer recreates accounts through public APIs, which
+     * reset their historical dates and a few user fields. Restore only those fields
+     * after a successful fail-on-duplicate import; the caller must fence source writes.
+     */
+    private function preserveAccountMetadata(Document $migration, Authorization $authorization): void
+    {
+        $resources = $migration->getAttribute('resources', []);
+        $context = $this->resolveResourceContext($migration);
+        if ($migration->getAttribute('source') !== SourceAppwrite::getName()
+            || $migration->getAttribute('destination') !== DestinationAppwrite::getName()
+            || ($migration->getAttribute('options', [])['onDuplicate'] ?? 'fail') !== 'fail'
+            || array_filter($context)
+            || !array_intersect($resources, [Resource::TYPE_USER, Resource::TYPE_TEAM, Resource::TYPE_MEMBERSHIP])) {
+            return;
+        }
+
+        $credentials = $migration->getAttribute('credentials');
+        $client = new AppwriteClient();
+        $client->setEndpoint($credentials['endpoint'])
+            ->setProject($credentials['projectId'])
+            ->setKey($credentials['apiKey']);
+
+        $users = new AppwriteUsers($client);
+        $teams = new AppwriteTeams($client);
+        $preserveDates = $this->dbForProject->getPreserveDates();
+        $this->dbForProject->setPreserveDates(true);
+
+        try {
+            if (in_array(Resource::TYPE_USER, $resources, true)) {
+                $cursor = null;
+                do {
+                    $queries = [AppwriteQuery::limit(100)];
+                    if ($cursor !== null) {
+                        $queries[] = AppwriteQuery::cursorAfter($cursor);
+                    }
+                    $page = $users->list($queries, total: false)->users;
+                    foreach ($page as $user) {
+                        $target = $authorization->skip(fn () => $this->dbForProject->getDocument('users', $user->id));
+                        if ($target->isEmpty()) {
+                            throw new \RuntimeException('Imported user is missing during metadata preservation');
+                        }
+                        $authorization->skip(fn () => $this->dbForProject->updateDocument('users', $user->id, new Document([
+                            '$createdAt' => $user->createdAt,
+                            '$updatedAt' => $user->updatedAt,
+                            'registration' => $user->registration,
+                            'passwordUpdate' => $user->passwordUpdate ?: null,
+                            'accessedAt' => $user->accessedAt ?: null,
+                            'hashOptions' => $user->hashOptions,
+                            'emailIsCanonical' => $user->emailIsCanonical,
+                        ])));
+                        $cursor = $user->id;
+                    }
+                } while (count($page) === 100);
+            }
+
+            if (in_array(Resource::TYPE_TEAM, $resources, true)
+                || in_array(Resource::TYPE_MEMBERSHIP, $resources, true)) {
+                $cursor = null;
+                do {
+                    $queries = [AppwriteQuery::limit(100)];
+                    if ($cursor !== null) {
+                        $queries[] = AppwriteQuery::cursorAfter($cursor);
+                    }
+                    $page = $teams->list($queries, total: false)->teams;
+                    foreach ($page as $team) {
+                        if (in_array(Resource::TYPE_TEAM, $resources, true)) {
+                            $target = $authorization->skip(fn () => $this->dbForProject->getDocument('teams', $team->id));
+                            if ($target->isEmpty()) {
+                                throw new \RuntimeException('Imported team is missing during metadata preservation');
+                            }
+                            $authorization->skip(fn () => $this->dbForProject->updateDocument('teams', $team->id, new Document([
+                                '$createdAt' => $team->createdAt,
+                                '$updatedAt' => $team->updatedAt,
+                            ])));
+                        }
+
+                        if (in_array(Resource::TYPE_MEMBERSHIP, $resources, true)) {
+                            $membershipCursor = null;
+                            do {
+                                $membershipQueries = [AppwriteQuery::limit(100)];
+                                if ($membershipCursor !== null) {
+                                    $membershipQueries[] = AppwriteQuery::cursorAfter($membershipCursor);
+                                }
+                                $memberships = $teams->listMemberships($team->id, $membershipQueries, total: false)->memberships;
+                                foreach ($memberships as $membership) {
+                                    $target = $authorization->skip(fn () => $this->dbForProject->findOne('memberships', [
+                                        Query::equal('teamId', [$team->id]),
+                                        Query::equal('userId', [$membership->userId]),
+                                    ]));
+                                    if ($target->isEmpty()) {
+                                        throw new \RuntimeException('Imported membership is missing during metadata preservation');
+                                    }
+                                    $authorization->skip(fn () => $this->dbForProject->updateDocument('memberships', $target->getId(), new Document([
+                                        '$createdAt' => $membership->createdAt,
+                                        '$updatedAt' => $membership->updatedAt,
+                                        'invited' => $membership->invited ?: null,
+                                        'joined' => $membership->joined ?: null,
+                                        'confirm' => $membership->confirm,
+                                    ])));
+                                    $membershipCursor = $membership->id;
+                                }
+                            } while (count($memberships) === 100);
+                        }
+                        $cursor = $team->id;
+                    }
+                } while (count($page) === 100);
+            }
+        } finally {
+            $this->dbForProject->setPreserveDates($preserveDates);
         }
     }
 
