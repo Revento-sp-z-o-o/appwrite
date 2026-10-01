@@ -37,7 +37,7 @@ class Migration extends Model
             ])
             ->addRule('stage', [
                 'type' => self::TYPE_STRING,
-                'description' => 'Migration stage ( init, processing, source-check, destination-check, migrating, preserving_accounts, finished )',
+                'description' => 'Migration stage ( init, processing, source-check, destination-check, migrating, finished )',
                 'default' => '',
                 'example' => 'init',
             ])
