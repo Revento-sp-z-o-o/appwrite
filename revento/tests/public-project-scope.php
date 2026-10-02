@@ -61,10 +61,9 @@ foreach ($cases as [$method, $path, $contentType, $body, $resource, $reject]) {
     foreach (['request' => $request, 'console' => new Document(['$id' => 'console']), 'dbForPlatform' => $db, 'authorization' => new Authorization(), 'utopia' => $http, 'projectIdFromPath' => ''] as $name => $value) {
         $container->set($name, static fn () => $value);
     }
-    $before = $db->reads;
     $rejected = false;
     try {
-        $container->get($resource);
+        $container->get('mode');
     } catch (Exception $e) {
         if ($e->getType() !== Exception::GENERAL_ACCESS_FORBIDDEN) {
             throw $e;
@@ -74,9 +73,8 @@ foreach ($cases as [$method, $path, $contentType, $body, $resource, $reject]) {
     if ($rejected !== $reject) {
         throw new RuntimeException('Unexpected public boundary result at case ' . $checks);
     }
-    if ($reject && $resource === 'project' && $db->reads !== $before) {
-        throw new RuntimeException('Rejected project read database');
-    }
+    // Rejection must leave project resolution reusable by error hooks.
+    $container->get('project');
     $checks++;
 }
 echo json_encode(['passed' => true, 'parsed_http_cases' => $checks]) . "\n";

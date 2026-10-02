@@ -71,19 +71,19 @@ final class PublicProjectScopeTest extends TestCase
     public static function resourceGuards(): array
     {
         return [
-            'http body project override' => ['resources/request.php', 'project', 'dev2', 'default'],
-            'http console fallback' => ['resources/request.php', 'project', 'console', 'default'],
+            'http body project override' => ['resources/request.php', 'mode', 'dev2', 'default'],
+            'http console fallback' => ['resources/request.php', 'mode', 'console', 'default'],
             'http admin mode' => ['resources/request.php', 'mode', 'production', 'admin'],
             'http inferred admin mode' => ['resources/request.php', 'mode', 'dev2', 'default'],
             'realtime other project' => ['realtime/connection.php', 'project', 'dev2', 'default'],
             'realtime console' => ['realtime/connection.php', 'project', 'console', 'default'],
             'realtime admin mode' => ['realtime/connection.php', 'user', 'production', 'admin'],
-            'http legacy alias' => ['resources/request.php', 'project', 'production', 'default', 'dev2'],
+            'http legacy alias' => ['resources/request.php', 'mode', 'production', 'default', 'dev2'],
         ];
     }
 
     #[DataProvider('resourceGuards')]
-    public function testResourceRejectsBeforeDatabaseAccess(string $file, string $resource, string $project, string $mode, string $pathProject = ''): void
+    public function testResourceRejectsPublicContext(string $file, string $resource, string $project, string $mode, string $pathProject = ''): void
     {
         if (!defined('APP_MODE_DEFAULT')) {
             define('APP_MODE_DEFAULT', 'default');
@@ -111,11 +111,16 @@ final class PublicProjectScopeTest extends TestCase
             'authorization' => new Authorization(),
             'utopia' => $http,
             'projectIdFromPath' => $pathProject,
-            'dbForPlatform' => null,
+            'dbForPlatform' => new class () {
+                public function getDocument(string $collection, string $id): Document
+                {
+                    return new Document(['$id' => $id]);
+                }
+            },
         ] as $name => $value) {
             $container->set($name, static fn () => $value);
         }
-        if ($resource === 'mode' || $resource === 'user') {
+        if ($resource === 'user') {
             $container->set('project', static fn () => new Document(['$id' => 'production']));
         }
         $this->expectException(Exception::class);

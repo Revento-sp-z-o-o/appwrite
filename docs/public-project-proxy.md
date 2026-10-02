@@ -21,3 +21,8 @@ administration and platform control routes, and route public Sites/Functions
 separately. Do not proxy arbitrary hosts into the custom-domain deployment
 router. Validate client request formats, GraphQL, websocket upgrades, upload,
 download, CORS and negative cross-project/admin cases before opening ingress.
+
+HTTP checks the resolved project when resolving access mode, which every API
+request requires. Keeping project resolution available lets error hooks render
+a normal authorization error instead of failing recursively. Realtime checks
+the project before its database lookup and checks the resolved access mode.

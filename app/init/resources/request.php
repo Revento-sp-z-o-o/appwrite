@@ -643,8 +643,6 @@ return function (Container $context): void {
             }
         }
 
-        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
-
         if ($projectId === '' || $projectId === 'console') {
             return $console;
         }
@@ -914,6 +912,9 @@ return function (Container $context): void {
     $context->set('audit', fn ($dbForProject) => new Audit(new AdapterDatabase($dbForProject)), ['dbForProject']);
 
     $context->set('mode', function ($request, Document $project) {
+        // Resolve the project first so error hooks can reuse it after a rejection.
+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $project->getId());
+
         /** @var Appwrite\Utopia\Request $request */
 
         /**

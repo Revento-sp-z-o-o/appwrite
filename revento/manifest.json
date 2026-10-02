@@ -102,8 +102,8 @@
       "file": "public-project-http.patch",
       "target": "app/init/resources/request.php",
       "before_sha256": "3146102956c106435e341e0f90cd2431c01f57812933e9467a49d232ac49ab54",
-      "after_sha256": "17aa1e6ab7c74e8a43a816db572ed51373504c1c90752a5e230466e5c6282774",
-      "patch_sha256": "bfde11abb55b9029bac47f7d388876b8d92b846b41477991eeb626dc576c1d2c"
+      "after_sha256": "ad68634f5449df0f69a4970848aa4ec4142c7909fb8a02a3ae7a0422f20fa209",
+      "patch_sha256": "9302536e9e29c74f4e357fb34e55af0222e04867b85acd5b14ad0121e857aa77"
     },
     {
       "name": "public-project-realtime",
