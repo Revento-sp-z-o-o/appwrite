@@ -96,6 +96,38 @@
       "before_sha256": "05fdc8ecadd707f78c0ef63e73801a2eb735af677a5029ed743d1ccad9844670",
       "after_sha256": "e255816e9be445c0a3454a484fa84e8714c1829e01a64b5e840b8365450b76e8",
       "patch_sha256": "fa6b33017e5ccd76058d919266bf69838d43559b39bc076a273885e629d02730"
+    },
+    {
+      "name": "public-project-http",
+      "file": "public-project-http.patch",
+      "target": "app/init/resources/request.php",
+      "before_sha256": "3146102956c106435e341e0f90cd2431c01f57812933e9467a49d232ac49ab54",
+      "after_sha256": "ad68634f5449df0f69a4970848aa4ec4142c7909fb8a02a3ae7a0422f20fa209",
+      "patch_sha256": "9302536e9e29c74f4e357fb34e55af0222e04867b85acd5b14ad0121e857aa77"
+    },
+    {
+      "name": "public-project-realtime",
+      "file": "public-project-realtime.patch",
+      "target": "app/init/realtime/connection.php",
+      "before_sha256": "7d6c05fa4b9b072d8b85b2b64a487cd047453247e29b9146b069474285a182e9",
+      "after_sha256": "9612a55b97caa32601b370def0e1827c71ab370d9503f5c350a0360540f3ed35",
+      "patch_sha256": "405359954c975cf450b50fdab5223f6d6b19cec4facb92d9ae87ca48b0642d2b"
+    },
+    {
+      "name": "public-project-scope",
+      "file": "public-project-scope.patch",
+      "target": "src/Appwrite/Network/PublicProjectScope.php",
+      "before_sha256": null,
+      "after_sha256": "4fc0438cd7654af659b5bf83c7a4fcc59bab0820df428d83e2e5f473754d15aa",
+      "patch_sha256": "eee370a9b318d219e379aaac4938dba2e385e92829ae4fc4ece465fcac18fc9f"
+    },
+    {
+      "name": "public-project-options",
+      "file": "public-project-options.patch",
+      "target": "app/controllers/general.php",
+      "before_sha256": "f234ce53aad1bd485c21b18e32730780b0660ad473a6927efe3e61e7b65028fc",
+      "after_sha256": "f8ff67a1fab651f6518f06c9dac51099278120aa0a2204bcb71824393e1a6dee",
+      "patch_sha256": "7f2c67fe6679673580e8ff4bde8b1de4119c31e62ec82c73359b02e81e37bbb1"
     }
   ]
 }

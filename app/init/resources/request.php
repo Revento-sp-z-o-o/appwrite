@@ -20,6 +20,7 @@ use Appwrite\GraphQL\Schema;
 use Appwrite\Locking\Lock;
 use Appwrite\Network\Cors;
 use Appwrite\Network\Platform;
+use Appwrite\Network\PublicProjectScope;
 use Appwrite\Network\Validator\Origin;
 use Appwrite\Network\Validator\Redirect;
 use Appwrite\Usage\Connection as UsageConnection;
@@ -911,6 +912,9 @@ return function (Container $context): void {
     $context->set('audit', fn ($dbForProject) => new Audit(new AdapterDatabase($dbForProject)), ['dbForProject']);
 
     $context->set('mode', function ($request, Document $project) {
+        // Resolve the project first so error hooks can reuse it after a rejection.
+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $project->getId());
+
         /** @var Appwrite\Utopia\Request $request */
 
         /**
@@ -924,6 +928,8 @@ return function (Container $context): void {
         if ($projectId !== '' && $project->getId() !== $projectId) {
             $mode = APP_MODE_ADMIN;
         }
+
+        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
 
         return $mode;
     }, ['request', 'project']);

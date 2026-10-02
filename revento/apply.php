@@ -10,7 +10,10 @@ $manifest = json_decode(file_get_contents(__DIR__ . '/manifest.json'), true, fla
 foreach ($manifest['patches'] as $patch) {
     $target = $root . '/' . $patch['target'];
     $file = __DIR__ . '/patches/' . $patch['file'];
-    if (hash_file('sha256', $target) !== $patch['before_sha256'] || hash_file('sha256', $file) !== $patch['patch_sha256']) {
+    $sourceMatches = $patch['before_sha256'] === null
+        ? !file_exists($target) && !is_link($target)
+        : is_file($target) && !is_link($target) && hash_file('sha256', $target) === $patch['before_sha256'];
+    if (!$sourceMatches || hash_file('sha256', $file) !== $patch['patch_sha256']) {
         throw new RuntimeException('Unreviewed source or patch: ' . $patch['name']);
     }
 }

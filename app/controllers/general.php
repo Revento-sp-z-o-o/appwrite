@@ -1208,6 +1208,7 @@ Http::init()
    });
 
 Http::options()
+    ->inject('mode')
     ->inject('utopia')
     ->inject('swooleRequest')
     ->inject('request')
@@ -1230,7 +1231,7 @@ Http::options()
     ->inject('publisherForDeletes')
     ->inject('executionsRetentionCount')
     ->inject('lock')
-    ->action(function (Http $utopia, SwooleRequest $swooleRequest, Request $request, Response $response, Log $log, Database $dbForPlatform, callable $getProjectDB, Event $queueForEvents, Bus $bus, Executor $executor, Geo $geo, callable $getIsResourceBlocked, array $platform, string $previewHostname, Document $project, Document $devKey, ?Key $apiKey, Cors $cors, Authorization $authorization, DeletePublisher $publisherForDeletes, int $executionsRetentionCount, Lock $lock) {
+    ->action(function (string $mode, Http $utopia, SwooleRequest $swooleRequest, Request $request, Response $response, Log $log, Database $dbForPlatform, callable $getProjectDB, Event $queueForEvents, Bus $bus, Executor $executor, Geo $geo, callable $getIsResourceBlocked, array $platform, string $previewHostname, Document $project, Document $devKey, ?Key $apiKey, Cors $cors, Authorization $authorization, DeletePublisher $publisherForDeletes, int $executionsRetentionCount, Lock $lock) {
         /*
         * Appwrite Router
         */
