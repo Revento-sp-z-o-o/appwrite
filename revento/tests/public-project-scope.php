@@ -27,6 +27,9 @@ $http = new class () extends Http {
 };
 $db = new class () {
     public int $reads = 0;
+    public function setAuthorization(Authorization $authorization): void
+    {
+    }
     public function getDocument(string $collection, string $id): Document
     {
         $this->reads++;
@@ -34,6 +37,7 @@ $db = new class () {
     }
 };
 $cases = [
+    ['OPTIONS', '/v1/account?project=dev2', '', '', 'mode', true],
     ['GET', '/v1/account', '', '', 'project', false],
     ['GET', '/v1/account?project=dev2', '', '', 'project', true],
     ['POST', '/v1/account', 'application/json', '{"project":"dev2"}', 'project', true],
@@ -77,4 +81,24 @@ foreach ($cases as [$method, $path, $contentType, $body, $resource, $reject]) {
     $container->get('project');
     $checks++;
 }
-echo json_encode(['passed' => true, 'parsed_http_cases' => $checks]) . "\n";
+// The real realtime resource must not interpret the valid ID "0" as console.
+function getConsoleDB(): object
+{
+    global $db;
+    return $db;
+}
+$realtimeChecks = 0;
+foreach (['0', ''] as $header) {
+    $swoole = \Swoole\Http\Request::create();
+    $swoole->parse("GET /v1/realtime?project=0 HTTP/1.1\r\nHost: private.test\r\nX-Appwrite-Public-Project: 0\r\nX-Appwrite-Project: $header\r\n\r\n");
+    $request = new Request($swoole);
+    $container = new Container();
+    (require $root . '/app/init/realtime/connection.php')($container);
+    $container->set('request', static fn () => $request);
+    $container->set('console', static fn () => new Document(['$id' => 'console']));
+    if ($container->get('project')->getId() !== '0') {
+        throw new RuntimeException('Project zero resolved to a different context');
+    }
+    $realtimeChecks++;
+}
+echo json_encode(['passed' => true, 'parsed_http_cases' => $checks, 'realtime_zero_cases' => $realtimeChecks]) . "\n";

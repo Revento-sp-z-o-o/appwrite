@@ -12,21 +12,21 @@ final class PublicProjectScope
 {
     public const string HEADER = 'x-appwrite-public-project';
 
-    public static function project(string $scope, string $projectId): void
+    public static function project(string $scope, string $projectId, string $errorType = Exception::GENERAL_ACCESS_FORBIDDEN): void
     {
         if ($scope === '') {
             return;
         }
 
         if ($scope === 'console' || $projectId === '' || $scope !== $projectId) {
-            throw new Exception(Exception::GENERAL_ACCESS_FORBIDDEN);
+            throw new Exception($errorType);
         }
     }
 
-    public static function mode(string $scope, mixed $mode): void
+    public static function mode(string $scope, mixed $mode, string $errorType = Exception::GENERAL_ACCESS_FORBIDDEN): void
     {
         if ($scope !== '' && $mode !== 'default') {
-            throw new Exception(Exception::GENERAL_ACCESS_FORBIDDEN);
+            throw new Exception($errorType);
         }
     }
 }

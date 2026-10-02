@@ -8,20 +8,37 @@
  use Appwrite\Network\Validator\Origin;
  use Appwrite\Utopia\Database\Documents\User;
  use Appwrite\Utopia\Request;
-@@ -43,6 +44,8 @@
-             $mode = APP_MODE_ADMIN;
+@@ -26,7 +27,7 @@
+     $getProjectId = static function (Request $request): string {
+         $projectId = $request->getHeaderLine('x-appwrite-project', '');
+ 
+-        if (!empty($projectId)) {
++        if ($projectId !== '') {
+             return $projectId;
          }
  
-+        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
+@@ -39,9 +40,11 @@
+         $mode = $request->getParam('mode', $request->getHeaderLine('x-appwrite-mode', APP_MODE_DEFAULT));
+         $projectId = $getProjectId($request);
+ 
+-        if (!empty($projectId) && $project->getId() !== $projectId) {
++        if ($projectId !== '' && $project->getId() !== $projectId) {
+             $mode = APP_MODE_ADMIN;
+         }
 +
++        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode, Exception::REALTIME_POLICY_VIOLATION);
+ 
          return $mode;
      };
- 
-@@ -164,6 +167,7 @@
+@@ -164,8 +167,9 @@
  
      $container->set('project', function (Request $request, Document $console, Authorization $authorization) use ($getProjectId, $getDbForPlatform) {
          $projectId = $getProjectId($request);
-+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
- 
-         if (empty($projectId) || $projectId === 'console') {
+-
+-        if (empty($projectId) || $projectId === 'console') {
++        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId, Exception::REALTIME_POLICY_VIOLATION);
++
++        if ($projectId === '' || $projectId === 'console') {
              return $console;
+         }
+ 

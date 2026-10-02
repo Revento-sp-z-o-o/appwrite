@@ -33,6 +33,7 @@ final class PublicProjectScopeTest extends TestCase
     public function testPublicRequestsRetainMatchingProjectClientAccess(): void
     {
         PublicProjectScope::project('production', 'production');
+        PublicProjectScope::project('0', '0');
         PublicProjectScope::mode('production', 'default');
         $this->addToAssertionCount(1);
     }
@@ -124,7 +125,7 @@ final class PublicProjectScopeTest extends TestCase
             $container->set('project', static fn () => new Document(['$id' => 'production']));
         }
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(401);
+        $this->expectExceptionCode(str_starts_with($file, 'realtime/') ? 1008 : 401);
         $container->get($resource);
     }
 }

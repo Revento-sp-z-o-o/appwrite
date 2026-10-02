@@ -27,7 +27,7 @@ return function (Container $container): void {
     $getProjectId = static function (Request $request): string {
         $projectId = $request->getHeaderLine('x-appwrite-project', '');
 
-        if (!empty($projectId)) {
+        if ($projectId !== '') {
             return $projectId;
         }
 
@@ -40,11 +40,11 @@ return function (Container $container): void {
         $mode = $request->getParam('mode', $request->getHeaderLine('x-appwrite-mode', APP_MODE_DEFAULT));
         $projectId = $getProjectId($request);
 
-        if (!empty($projectId) && $project->getId() !== $projectId) {
+        if ($projectId !== '' && $project->getId() !== $projectId) {
             $mode = APP_MODE_ADMIN;
         }
 
-        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
+        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode, Exception::REALTIME_POLICY_VIOLATION);
 
         return $mode;
     };
@@ -167,9 +167,9 @@ return function (Container $container): void {
 
     $container->set('project', function (Request $request, Document $console, Authorization $authorization) use ($getProjectId, $getDbForPlatform) {
         $projectId = $getProjectId($request);
-        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId, Exception::REALTIME_POLICY_VIOLATION);
 
-        if (empty($projectId) || $projectId === 'console') {
+        if ($projectId === '' || $projectId === 'console') {
             return $console;
         }
 

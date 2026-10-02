@@ -9,6 +9,7 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
     && REVENTO_DATABASE_SOURCE=/usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
        REVENTO_APPWRITE_SOURCE=/usr/src/code php /tmp/revento/tests/patches.php \
     && php /tmp/revento/apply.php /usr/src/code \
+    && php -l /usr/src/code/app/controllers/general.php \
     && php -l /usr/src/code/app/init/resources/request.php \
     && php -l /usr/src/code/app/init/realtime/connection.php \
     && php -l /usr/src/code/src/Appwrite/Network/PublicProjectScope.php \

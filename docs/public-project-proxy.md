@@ -26,3 +26,9 @@ HTTP checks the resolved project when resolving access mode, which every API
 request requires. Keeping project resolution available lets error hooks render
 a normal authorization error instead of failing recursively. Realtime checks
 the project before its database lookup and checks the resolved access mode.
+
+The catch-all OPTIONS hook also resolves mode before other request resources,
+so preflights cannot select a different project. Realtime rejects with the
+existing policy-violation code 1008 and treats `0` as a nonempty project ID.
+The current Utopia Swoole adapter closes the TCP connection without transmitting
+a WebSocket close frame; the application error payload uses code 1008.
