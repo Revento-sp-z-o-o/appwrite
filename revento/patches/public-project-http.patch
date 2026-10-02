@@ -1,0 +1,28 @@
+--- a/app/init/resources/request.php
++++ b/app/init/resources/request.php
+@@ -20,6 +20,7 @@
+ use Appwrite\Locking\Lock;
+ use Appwrite\Network\Cors;
+ use Appwrite\Network\Platform;
++use Appwrite\Network\PublicProjectScope;
+ use Appwrite\Network\Validator\Origin;
+ use Appwrite\Network\Validator\Redirect;
+ use Appwrite\Usage\Connection as UsageConnection;
+@@ -642,6 +643,8 @@
+             }
+         }
+ 
++        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
++
+         if ($projectId === '' || $projectId === 'console') {
+             return $console;
+         }
+@@ -925,6 +928,8 @@
+             $mode = APP_MODE_ADMIN;
+         }
+ 
++        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
++
+         return $mode;
+     }, ['request', 'project']);
+ 

@@ -9,6 +9,9 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
     && REVENTO_DATABASE_SOURCE=/usr/src/code/vendor/utopia-php/database/src/Database/Database.php \
        REVENTO_APPWRITE_SOURCE=/usr/src/code php /tmp/revento/tests/patches.php \
     && php /tmp/revento/apply.php /usr/src/code \
+    && php -l /usr/src/code/app/init/resources/request.php \
+    && php -l /usr/src/code/app/init/realtime/connection.php \
+    && php -l /usr/src/code/src/Appwrite/Network/PublicProjectScope.php \
     && php -l /usr/src/code/app/http.php \
     && php -l /usr/src/code/app/init/constants.php \
     && php -l /usr/src/code/src/Appwrite/Platform/Workers/Migrations.php \
@@ -23,6 +26,7 @@ RUN apk add --no-cache --virtual .revento-build patch=2.8-r0 \
     && php -l /usr/src/code/src/Appwrite/Platform/Modules/Databases/Http/Databases/Transactions/Operations/Create.php \
     && php -l /usr/src/code/src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php \
     && php /tmp/revento/tests/eng2083-integrity.php /usr/src/code \
+    && php /tmp/revento/tests/public-project-scope.php \
     && mkdir -p /usr/local/share/revento \
     && cp /tmp/revento/manifest.json /usr/local/share/revento/manifest.json \
     && rm -r /tmp/revento \

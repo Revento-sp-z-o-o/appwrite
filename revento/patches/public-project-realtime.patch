@@ -1,0 +1,27 @@
+--- a/app/init/realtime/connection.php
++++ b/app/init/realtime/connection.php
+@@ -4,6 +4,7 @@
+ use Ahc\Jwt\JWTException;
+ use Appwrite\Extend\Exception;
+ use Appwrite\Network\Platform;
++use Appwrite\Network\PublicProjectScope;
+ use Appwrite\Network\Validator\Origin;
+ use Appwrite\Utopia\Database\Documents\User;
+ use Appwrite\Utopia\Request;
+@@ -43,6 +44,8 @@
+             $mode = APP_MODE_ADMIN;
+         }
+ 
++        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
++
+         return $mode;
+     };
+ 
+@@ -164,6 +167,7 @@
+ 
+     $container->set('project', function (Request $request, Document $console, Authorization $authorization) use ($getProjectId, $getDbForPlatform) {
+         $projectId = $getProjectId($request);
++        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
+ 
+         if (empty($projectId) || $projectId === 'console') {
+             return $console;

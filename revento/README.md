@@ -19,6 +19,7 @@ production release.
 | `transaction-event-reads` | Bounded final events and guarded old-row reads for PostgreSQL transaction updates. | Only declared internal read changes; event dispatch and rollback boundaries verified. |
 | `transaction-staging-reads` | Use narrow staging reads through legacy/TablesDB operations routes (ENG-2084). | Local API staging and 150-row wiring comparison passed. |
 | `account-metadata-worker` | Restore account metadata after Appwrite-to-Appwrite import, with retryable repair and pending-member count/cache correction. | Pinned patch proof passed; disposable API qualification pending. |
+| `public-project-http`, `public-project-realtime`, `public-project-scope` | Enforce a proxy-pinned project and prohibit Console mode across HTTP and realtime. | Local focused tests pass; public ingress qualification pending. |
 | `account-metadata-stage` | Describe the account-preservation retry stage in migration responses. | Pinned patch proof passed. |
 
 The database patch changes Utopia's dependency code, not Revento functions or SDKs.

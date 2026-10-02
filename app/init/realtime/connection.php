@@ -4,6 +4,7 @@ use Ahc\Jwt\JWT;
 use Ahc\Jwt\JWTException;
 use Appwrite\Extend\Exception;
 use Appwrite\Network\Platform;
+use Appwrite\Network\PublicProjectScope;
 use Appwrite\Network\Validator\Origin;
 use Appwrite\Utopia\Database\Documents\User;
 use Appwrite\Utopia\Request;
@@ -42,6 +43,8 @@ return function (Container $container): void {
         if (!empty($projectId) && $project->getId() !== $projectId) {
             $mode = APP_MODE_ADMIN;
         }
+
+        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
 
         return $mode;
     };
@@ -164,6 +167,7 @@ return function (Container $container): void {
 
     $container->set('project', function (Request $request, Document $console, Authorization $authorization) use ($getProjectId, $getDbForPlatform) {
         $projectId = $getProjectId($request);
+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
 
         if (empty($projectId) || $projectId === 'console') {
             return $console;

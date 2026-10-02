@@ -20,6 +20,7 @@ use Appwrite\GraphQL\Schema;
 use Appwrite\Locking\Lock;
 use Appwrite\Network\Cors;
 use Appwrite\Network\Platform;
+use Appwrite\Network\PublicProjectScope;
 use Appwrite\Network\Validator\Origin;
 use Appwrite\Network\Validator\Redirect;
 use Appwrite\Usage\Connection as UsageConnection;
@@ -642,6 +643,8 @@ return function (Container $context): void {
             }
         }
 
+        PublicProjectScope::project($request->getHeaderLine(PublicProjectScope::HEADER, ''), $projectId);
+
         if ($projectId === '' || $projectId === 'console') {
             return $console;
         }
@@ -924,6 +927,8 @@ return function (Container $context): void {
         if ($projectId !== '' && $project->getId() !== $projectId) {
             $mode = APP_MODE_ADMIN;
         }
+
+        PublicProjectScope::mode($request->getHeaderLine(PublicProjectScope::HEADER, ''), $mode);
 
         return $mode;
     }, ['request', 'project']);

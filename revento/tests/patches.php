@@ -26,14 +26,17 @@ try {
                 mkdir(dirname($target), 0700, true);
             }
             $original = $patch['name'] === 'relationship-lookups' ? $source : $appwrite . '/' . $patch['target'];
-            copy($original, $target);
+            if ($patch['before_sha256'] !== null) {
+                copy($original, $target);
+            }
         }
         if ($changedIndex !== null) {
             file_put_contents($root . '/' . $manifest['patches'][$changedIndex]['target'], "\n// unreviewed change\n", FILE_APPEND);
         }
         $before = [];
         foreach ($manifest['patches'] as $patch) {
-            $before[$patch['target']] = hash_file('sha256', $root . '/' . $patch['target']);
+            $target = $root . '/' . $patch['target'];
+            $before[$patch['target']] = is_file($target) ? hash_file('sha256', $target) : null;
         }
         $process = proc_open([PHP_BINARY, $maintenance . '/apply.php', $root], [0 => ['file', '/dev/null', 'r'], 1 => ['file', $root . '/output.log', 'w'], 2 => ['file', $root . '/error.log', 'w']], $pipes);
         if (!is_resource($process)) {
@@ -45,7 +48,9 @@ try {
         }
         foreach ($manifest['patches'] as $patch) {
             $expected = $scenario === 'valid' ? $patch['after_sha256'] : $before[$patch['target']];
-            if (hash_file('sha256', $root . '/' . $patch['target']) !== $expected) {
+            $target = $root . '/' . $patch['target'];
+            $actual = is_file($target) ? hash_file('sha256', $target) : null;
+            if ($actual !== $expected) {
                 throw new RuntimeException('Installer changed unexpected bytes: ' . $scenario);
             }
         }
