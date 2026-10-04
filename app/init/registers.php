@@ -440,7 +440,7 @@ $register->set('smtp', function () {
         smtpAutoTLS: false,
         xMailer: 'Appwrite Mailer',
         timeout: 10,
-        keepAlive: true,
+        keepAlive: false,
         timelimit: 30,
     );
 });
